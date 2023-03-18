@@ -2,6 +2,9 @@
 #include "SDL.h"
 #include "tracer.h"
 #include <thread>
+#include <execution>
+
+using namespace std;
 
 class DisplayWindow {
 public:
@@ -18,7 +21,6 @@ public:
 	V3 bot_left;
 	V3 horizontal;
 	V3 vertical;
-
 
 	void traceSegment(V3 cam_origin, float numSamples, V3 bot_left, V3 horizontal, V3 vertical, V3 center_one, float radius_one, Uint32 segment_width, int thread);
 	void initDisplay();
