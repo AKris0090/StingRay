@@ -25,6 +25,12 @@
     <Filter Include="Source Files\Ray">
       <UniqueIdentifier>{9c30f961-acc4-4f4c-8f2c-83056eff7453}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Sphere">
+      <UniqueIdentifier>{a49aa16d-102d-4691-8aba-72a92c8b63e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\PBRMat">
+      <UniqueIdentifier>{ef7cc603-4b1c-4026-8fbb-1f1d526f6d57}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="StingRay.cpp">
@@ -33,7 +39,7 @@
     <ClCompile Include="Display.cpp">
       <Filter>Source Files\Display</Filter>
     </ClCompile>
-    <ClCompile Include="Vertex.cpp">
+    <ClCompile Include="Vector.cpp">
       <Filter>Source Files\Vector</Filter>
     </ClCompile>
     <ClCompile Include="Tracer.cpp">
@@ -42,12 +48,15 @@
     <ClCompile Include="Ray.cpp">
       <Filter>Source Files\Ray</Filter>
     </ClCompile>
+    <ClCompile Include="PBRMat.cpp">
+      <Filter>Source Files\PBRMat</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Display.h">
       <Filter>Source Files\Display</Filter>
     </ClInclude>
-    <ClInclude Include="Vertex.h">
+    <ClInclude Include="Vector.h">
       <Filter>Source Files\Vector</Filter>
     </ClInclude>
     <ClInclude Include="Tracer.h">
@@ -55,6 +64,12 @@
     </ClInclude>
     <ClInclude Include="Ray.h">
       <Filter>Source Files\Ray</Filter>
+    </ClInclude>
+    <ClInclude Include="Sphere.h">
+      <Filter>Source Files\Sphere</Filter>
+    </ClInclude>
+    <ClInclude Include="PBRMat.h">
+      <Filter>Source Files\PBRMat</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

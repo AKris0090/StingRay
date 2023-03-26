@@ -9,7 +9,7 @@ public:
 	float z;
 	float w;
 
-	V3() { V3(0, 0, 0); };
+	V3() { V3(0.0, 0.0, 0.0); };
 	V3(float x, float y, float z, float w) { this->x = x; this->y = y; this->z = z; this->w = w; }
 	V3(float x, float y, float z) { this->x = x; this->y = y; this->z = z; this->w = 0.0F; }
 
@@ -21,8 +21,10 @@ public:
 	V3 sub_val(float val);
 	V3 mul_val(float val);
 	V3 div_val(float val);
+	V3 copy();
+	void reset();
 
-	float length();
+	double length();
 	float squared_length();
 
 	V3 normalize();
