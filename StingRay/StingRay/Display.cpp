@@ -35,8 +35,8 @@ void DisplayWindow::initDisplay(int screen_width, int screen_height) {
     cam_aspect_height = 1.5;
 
     this->bot_left = { -cam_aspect_width, -cam_aspect_height, -1 };
-    this->horizontal = { cam_aspect_width * 2, 0, -1 };
-    this->vertical = { 0, cam_aspect_height * 2, -1 };
+    this->horizontal = { cam_aspect_width * 2, 0, 0 };
+    this->vertical = { 0, cam_aspect_height * 2, 0 };
 
     for (int i = 0; i < SCREEN_WIDTH; i++) {
         width_iterator.emplace_back(i);
@@ -73,8 +73,8 @@ void DisplayWindow::updateDisplay(V3 cam_origin, float numSamples, int numBounce
         std::for_each(std::execution::par, width_iterator.begin(), width_iterator.end(), [this](int i) {
             std::for_each(std::execution::par, height_iterator.begin(), height_iterator.end(), [this, i](int j) {
                 V3 out_color(0, 0, 0);
-                V3 u = horizontal.mul_val(float(i + ((rand() / (double) (RAND_MAX)))) / float(SCREEN_WIDTH));
-                V3 v = vertical.mul_val(float(j + ((rand() / (double) (RAND_MAX)))) / float(SCREEN_HEIGHT));
+                V3 u = horizontal.mul_val(float(i + ((rand() / (float) (RAND_MAX)))) / float(SCREEN_WIDTH));
+                V3 v = vertical.mul_val(float(j + ((rand() / (float) (RAND_MAX)))) / float(SCREEN_HEIGHT));
 
                 Ray primary_ray(copied_origin, bot_left.add(u).add(v).sub(copied_origin));
                 V3 alt_ray = tracer.trace_ray(primary_ray, objects, 0);

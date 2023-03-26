@@ -26,7 +26,7 @@ int main(int argc, char** arcgv) {
 
     bool running = true;
     SDL_Event event;
-    V3 cam_origin(0.0f, 0.0f, 1.0f);
+    V3 cam_origin(0.0f, 0.0f, 0.0f);
     float numSamples = 500.0f;
 
     using std::chrono::high_resolution_clock;
