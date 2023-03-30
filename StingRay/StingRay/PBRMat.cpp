@@ -3,9 +3,14 @@
 V3 PBRMaterial::random_direction() {
 	V3 random = V3(1, 1, 1);
 	while (random.squared_length() >= 1) {
-		random = V3((rand() / (float)(RAND_MAX)), (rand() / (float)(RAND_MAX)), (rand() / (float)(RAND_MAX))).mul_val(2.0).sub(V3(1, 1, 1));
+		random = V3((rand() / (float)(RAND_MAX)), (rand() / (float)(RAND_MAX)), (rand() / (float)(RAND_MAX))).mul_val(2.0).sub(V3(1));
 	}
 	return random;
+}
+
+V3 PBRMaterial::random_direction_in_n(float radius) {
+	V3 random = random_direction();
+	return random.mul_val(radius);
 }
 
 // Perfect reflection
@@ -30,5 +35,5 @@ V3 PBRMaterial::hitColor(Ray& in_ray, hitReg& hR, Ray& out_ray){
 	else {
 		out_ray = Ray(in_ray.get_at(hR.time), this->reflect(in_ray, hR).mul_val((1.0 - this->roughness)).add(this->random_scatter(in_ray, hR).mul_val(roughness)));
 	}
-	return this->base_color.div_val(255.99f);
+	return this->base_color.div_val(255.0f);
 }

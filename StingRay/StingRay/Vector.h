@@ -12,6 +12,7 @@ public:
 	V3() { V3(0.0, 0.0, 0.0); };
 	V3(float x, float y, float z, float w) { this->x = x; this->y = y; this->z = z; this->w = w; }
 	V3(float x, float y, float z) { this->x = x; this->y = y; this->z = z; this->w = 0.0F; }
+	V3(float num) { this->x = num; this->y = num; this->z = num; this->w = 0.0F; }
 
 	V3 add(const V3& other);
 	V3 sub(const V3& other);

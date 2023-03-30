@@ -147,6 +147,7 @@
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AreaLight.h" />
     <ClInclude Include="Display.h" />
     <ClInclude Include="PBRMat.h" />
     <ClInclude Include="Sphere.h" />

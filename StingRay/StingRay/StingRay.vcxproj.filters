@@ -31,6 +31,9 @@
     <Filter Include="Source Files\PBRMat">
       <UniqueIdentifier>{ef7cc603-4b1c-4026-8fbb-1f1d526f6d57}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Lights">
+      <UniqueIdentifier>{734157fc-1633-41b5-b497-b57e2b47f887}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="StingRay.cpp">
@@ -70,6 +73,9 @@
     </ClInclude>
     <ClInclude Include="PBRMat.h">
       <Filter>Source Files\PBRMat</Filter>
+    </ClInclude>
+    <ClInclude Include="AreaLight.h">
+      <Filter>Source Files\Lights</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

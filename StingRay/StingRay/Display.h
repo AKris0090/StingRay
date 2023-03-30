@@ -12,15 +12,17 @@ using namespace std;
 
 class DisplayWindow {
 public:
+	Tracer tracer;
 	int SCREEN_WIDTH = 0;
 	int SCREEN_HEIGHT = 0;
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 	SDL_Texture* texture;
 	SDL_Surface* surface;
-	Tracer tracer;
 	Uint32* pixels;
 	V3* totals;
+	AreaLight* a;
+	AreaLight* b;
 
 	Uint32 segment_width = 0;
 	float cam_aspect_width = 0;
@@ -36,7 +38,8 @@ public:
 
 	void initDisplay(int screen_width, int screen_height);
 	void updateDisplay(V3 cam_origin, float numSamples, int numBounces);
-	std::vector<Sphere> objects;
+	vector<Sphere> objects;
+	vector<AreaLight> lights;
 	vector<int> width_iterator;
 	vector<int> height_iterator;
 };

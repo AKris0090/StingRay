@@ -12,7 +12,7 @@ DisplayWindow window;
 
 #define SCREEN_WIDTH 1200
 #define SCREEN_HEIGHT 600
-#define NUMBOUNCES 3
+#define NUMBOUNCES 5
 
 void reclearFrame() {
     delete[] window.totals;
@@ -21,13 +21,12 @@ void reclearFrame() {
 }
 
 int main(int argc, char** arcgv) {
-
-    window.initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT);
-
     bool running = true;
     SDL_Event event;
     V3 cam_origin(0.0f, 0.0f, 0.0f);
-    float numSamples = 500.0f;
+    float numSamples = 2500.0f;
+
+    window.initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT);
 
     using std::chrono::high_resolution_clock;
     using std::chrono::duration_cast;
@@ -58,18 +57,30 @@ int main(int argc, char** arcgv) {
         case SDL_KEYDOWN:
             if (event.key.keysym.sym == SDLK_a) {
                 cam_origin.x -= 0.5;
+                window.horizontal.x -= 0.5;
+                window.bot_left.x -= 0.5;
+                window.vertical.x -= 0.5;
                 reclearFrame();
             }
             else if (event.key.keysym.sym == SDLK_d) {
                 cam_origin.x += 0.5;
+                window.horizontal.x += 0.5;
+                window.bot_left.x += 0.5;
+                window.vertical.x += 0.5;
                 reclearFrame();
             }
             else if (event.key.keysym.sym == SDLK_s) {
                 cam_origin.y -= 0.25;
+                window.horizontal.y -= 0.25;
+                window.bot_left.y -= 0.25;
+                window.vertical.y -= 0.25;
                 reclearFrame();
             }
             else if (event.key.keysym.sym == SDLK_w) {
                 cam_origin.y += 0.25;
+                window.horizontal.y += 0.25;
+                window.bot_left.y += 0.25;
+                window.vertical.y += 0.25;
                 reclearFrame();
             }
             else if (event.key.keysym.sym == SDLK_q) {

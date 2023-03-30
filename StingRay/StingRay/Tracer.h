@@ -2,6 +2,7 @@
 #include <vector>
 #include "PBRMat.h"
 #include "Sphere.h"
+#include "AreaLight.h"
 
 using namespace std;
 
@@ -14,5 +15,6 @@ public:
 		this->max_bounces = bounces;
 	};
 	// Should return a color that corresponds to the traced ray
-	V3 trace_ray(Ray& primaryRay, std::vector<Sphere>, int numBounces);
+	V3 get_light_intensity(Ray& in, std::vector<Sphere> objects, V3 hitcolor, AreaLight a, hitReg primHit, PBRMaterial mat);
+	V3 trace_ray(Ray& primaryRay, std::vector<Sphere>, int numBounces, std::vector<AreaLight> lights);
 };

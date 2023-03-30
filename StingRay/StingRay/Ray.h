@@ -11,6 +11,7 @@ class Ray {
 public:
 	V3 origin;
 	V3 direction;
+	bool isShadowRay = false;
 
 	Ray() { a = b = c = disc = temp_quad_f = 0.0;  };
 	Ray(V3 origin, V3 direction) { this->origin = origin; this->direction = direction; a = b = c = disc = temp_quad_f = 0.0; };

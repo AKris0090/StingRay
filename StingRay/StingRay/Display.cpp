@@ -34,6 +34,7 @@ void DisplayWindow::initDisplay(int screen_width, int screen_height) {
     cam_aspect_width = 3.0;
     cam_aspect_height = 1.5;
 
+
     this->bot_left = { -cam_aspect_width, -cam_aspect_height, -1 };
     this->horizontal = { cam_aspect_width * 2, 0, 0 };
     this->vertical = { 0, cam_aspect_height * 2, 0 };
@@ -48,10 +49,15 @@ void DisplayWindow::initDisplay(int screen_width, int screen_height) {
     center_one = { 0, 0, -1 };
     radius_one = 1.5;
 
-    PBRMaterial metal(V3(204.0f, 204.0f, 204.0f), 0.0, 0.0, 0.0, 0.0, 0.0);
+    PBRMaterial metal(V3(204.0f, 204.0f, 204.0f), 0.0, 0.05, 0.0, 0.0, 0.0);
     PBRMaterial metal2(V3(204.0f, 204.0f, 204.0f), 0.0, 0.25, 0.0, 0.0, 0.0);
     PBRMaterial red(V3(255.0f, 0.0f, 0.0f), 0.0, 1.0, 0.0, 0.0, 0.0);
     PBRMaterial blue(V3(0.0f, 0.0f, 255.0f), 0.0, 1.0, 0.0, 0.0, 0.0);
+
+    a = new AreaLight(Sphere(V3(0.0f, 4.0f, -1.0f), 0.25), 250.0f);
+    b = new AreaLight(Sphere(V3(-2.0f, 4.0f, 2.0f), 0.5), 250.0f);
+    lights.push_back(*a);
+    //lights.push_back(*b);
 
     objects.push_back(Sphere(V3(0, 0, -1), 0.5, blue));
     objects.push_back(Sphere(V3(0, -100.5, -1), 100, red));
@@ -77,13 +83,13 @@ void DisplayWindow::updateDisplay(V3 cam_origin, float numSamples, int numBounce
                 V3 v = vertical.mul_val(float(j + ((rand() / (float) (RAND_MAX)))) / float(SCREEN_HEIGHT));
 
                 Ray primary_ray(copied_origin, bot_left.add(u).add(v).sub(copied_origin));
-                V3 alt_ray = tracer.trace_ray(primary_ray, objects, 0);
+                V3 alt_ray = tracer.trace_ray(primary_ray, objects, 0, lights);
                 out_color = out_color.add(alt_ray);
                 int index = i + (j * SCREEN_WIDTH);
 
-                totals[index].x += (long) out_color.x;
-                totals[index].y += (long)out_color.y;
-                totals[index].z += (long)out_color.z;
+                totals[index].x += clamp((long) out_color.x, (long) 0, (long) 255);
+                totals[index].y += clamp((long)out_color.y, (long)0, (long)255);
+                totals[index].z += clamp((long)out_color.z, (long)0, (long)255);
                 pixels[index] = SDL_MapRGB(surface->format, (Uint8) (totals[index].x / repeat_samples), (Uint8) (totals[index].y / repeat_samples), (Uint8) (totals[index].z / repeat_samples));
             });
         });
