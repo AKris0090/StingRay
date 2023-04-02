@@ -68,3 +68,10 @@ void V3::reset(){
 	this->z = 0;
 	this->w = 0;
 }
+
+float V3::distance_to(V3 other) {
+	float squared_val_x = (other.x - x) * (other.x - x);
+	float squared_val_y = (other.y - y) * (other.y - y);
+	float squared_val_z = (other.z - z) * (other.z - z);
+	return (float) sqrt(squared_val_x + squared_val_y + squared_val_z);
+}

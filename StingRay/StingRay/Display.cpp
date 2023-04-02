@@ -54,10 +54,10 @@ void DisplayWindow::initDisplay(int screen_width, int screen_height) {
     PBRMaterial red(V3(255.0f, 0.0f, 0.0f), 0.0, 1.0, 0.0, 0.0, 0.0);
     PBRMaterial blue(V3(0.0f, 0.0f, 255.0f), 0.0, 1.0, 0.0, 0.0, 0.0);
 
-    a = new AreaLight(Sphere(V3(0.0f, 4.0f, -1.0f), 0.25), 250.0f);
-    b = new AreaLight(Sphere(V3(-2.0f, 4.0f, 2.0f), 0.5), 250.0f);
+    a = new AreaLight(Sphere(V3(0.0f, 2.0f, 1.0f), 0.25), 1500.0f);
+    b = new AreaLight(Sphere(V3(0.0f, 2.0f, -1.0f), 0.25), 1500.0f);
     lights.push_back(*a);
-    //lights.push_back(*b);
+    lights.push_back(*b);
 
     objects.push_back(Sphere(V3(0, 0, -1), 0.5, blue));
     objects.push_back(Sphere(V3(0, -100.5, -1), 100, red));
@@ -66,30 +66,25 @@ void DisplayWindow::initDisplay(int screen_width, int screen_height) {
     totals = new V3[SCREEN_WIDTH * SCREEN_HEIGHT];
 }
 
-void DisplayWindow::updateDisplay(V3 cam_origin, float numSamples, int numBounces) {
+void DisplayWindow::updateDisplay(const V3 cam_origin, float numSamples, const int numBounces) {
     tracer = Tracer(numBounces);
     if (repeat_samples < numSamples) {
-        num_bounces = numBounces;
         pixels = new Uint32[SCREEN_WIDTH * SCREEN_HEIGHT];
         texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
         repeat_samples += 1;
-        copied_origin = cam_origin.copy();
 
+        std::for_each(std::execution::par, width_iterator.begin(), width_iterator.end(), [this, cam_origin](int i) {
+            std::for_each(std::execution::par, height_iterator.begin(), height_iterator.end(), [this, i, cam_origin](int j) {
+                V3 u = horizontal.mul_val((float) ((i + ((rand() / (float) RAND_MAX))) / SCREEN_WIDTH));
+                V3 v = vertical.mul_val((float) ((j + ((rand() / (float) RAND_MAX))) / SCREEN_HEIGHT));
 
-        std::for_each(std::execution::par, width_iterator.begin(), width_iterator.end(), [this](int i) {
-            std::for_each(std::execution::par, height_iterator.begin(), height_iterator.end(), [this, i](int j) {
-                V3 out_color(0, 0, 0);
-                V3 u = horizontal.mul_val(float(i + ((rand() / (float) (RAND_MAX)))) / float(SCREEN_WIDTH));
-                V3 v = vertical.mul_val(float(j + ((rand() / (float) (RAND_MAX)))) / float(SCREEN_HEIGHT));
-
-                Ray primary_ray(copied_origin, bot_left.add(u).add(v).sub(copied_origin));
-                V3 alt_ray = tracer.trace_ray(primary_ray, objects, 0, lights);
-                out_color = out_color.add(alt_ray);
+                Ray primary_ray(copied_origin, bot_left.add(u).add(v).sub(cam_origin));
+                V3 ret_color = tracer.trace_ray(primary_ray, objects, 0, lights);
                 int index = i + (j * SCREEN_WIDTH);
 
-                totals[index].x += clamp((long) out_color.x, (long) 0, (long) 255);
-                totals[index].y += clamp((long)out_color.y, (long)0, (long)255);
-                totals[index].z += clamp((long)out_color.z, (long)0, (long)255);
+                totals[index].x += (long) clamp(ret_color.x, 0.0f, 255.0f);
+                totals[index].y += (long) clamp(ret_color.y, 0.0f, 255.0f);
+                totals[index].z += (long) clamp(ret_color.z, 0.0f, 255.0f);
                 pixels[index] = SDL_MapRGB(surface->format, (Uint8) (totals[index].x / repeat_samples), (Uint8) (totals[index].y / repeat_samples), (Uint8) (totals[index].z / repeat_samples));
             });
         });

@@ -39,34 +39,34 @@ V3 Tracer::trace_ray(Ray& ray, vector<Sphere> objects, int numBounces, std::vect
 		}
 	}
 
-// For normal color display
-//V3 normal = hit.normal_vector.add_val(1).mul_val(0.5).mul_val(255.99);
-//return normal;
-//cout << attenuation.x << " " << attenuation.y << " " << attenuation.z << endl;
-
 	if (hit_anything) {
 		if (numBounces < this->max_bounces) {
+			V3 true_color(0, 0, 0);
 			Ray secondaryRay(V3(0, 0, 0), V3(0, 0, 0));
 			V3 attenuation = current_mat.hitColor(ray, hit, secondaryRay);
-			V3 true_color(0, 0, 0);
-			for (int i = 0; i < lights.size(); i++) {
+			for(int i = 0; i < lights.size(); i++){
 				AreaLight l = lights.at(i);
-				numBounces += 1;
+				float intensity = l.get_intensity(ray.get_at(hit.time).distance_to(l.pos.origin));
 				Ray shadowRay(ray.get_at(hit.time), l.pos.origin.sub(ray.get_at(hit.time)).add(current_mat.random_direction_in_n(l.pos.radius)));
-				true_color = true_color.add(get_light_intensity(shadowRay, objects, attenuation, l, hit, current_mat).mul(l.intensity));
+				true_color = true_color.add(get_light_intensity(shadowRay, objects, attenuation, l, hit, current_mat).mul_val(intensity));
 				if (secondaryRay.intersect(l.pos.origin, 0.0f, FLT_MAX, l.pos.radius).hit) {
-					return l.color.mul(l.intensity);
+					return l.color.mul(intensity);
 				}
 			}
-			V3 out_v = attenuation.mul(trace_ray(secondaryRay, objects, numBounces, lights)).add(true_color.mul_val(current_mat.roughness));
+			numBounces += 1;
+			V3 out_v = attenuation.mul_val(1.0 - current_mat.roughness).mul(trace_ray(secondaryRay, objects, numBounces, lights)).add(true_color.mul_val(current_mat.roughness));
 			return out_v;
 		}
 		else {
-			Ray secondaryRay(V3(0, 0, 0), V3(0, 0, 0));
-			return current_mat.hitColor(ray, hit, secondaryRay);
+		Ray secondaryRay(V3(0, 0, 0), V3(0, 0, 0));
+		V3 attenuation = current_mat.hitColor(ray, hit, secondaryRay);
+			return attenuation.mul_val(1.0 - current_mat.roughness);
 		}
 	}
 	else {
+		//V3 unit_dir = ray.direction.normalize();
+		//float t = 0.5 * (unit_dir.y + 1.0);
+		//return V3(1.0, 1.0, 1.0).mul_val(1.0 - t).add(V3(0.5, 0.7, 1.0).mul_val(t)).mul_val(255.99);
 		return V3(0, 0, 0);
 	}
 }

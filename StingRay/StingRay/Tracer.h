@@ -10,6 +10,8 @@ class Tracer {
 public:
 	Ray pRay;
 	int max_bounces = 0;
+	V3 out_true_color;
+
 	Tracer() {};
 	Tracer(int bounces) {
 		this->max_bounces = bounces;

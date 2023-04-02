@@ -12,19 +12,19 @@ DisplayWindow window;
 
 #define SCREEN_WIDTH 1200
 #define SCREEN_HEIGHT 600
-#define NUMBOUNCES 5
+#define NUMBOUNCES 3
 
 void reclearFrame() {
     delete[] window.totals;
     window.totals = new V3[SCREEN_WIDTH * SCREEN_HEIGHT];
     window.repeat_samples = 0;
-}
+}                         
 
 int main(int argc, char** arcgv) {
     bool running = true;
     SDL_Event event;
     V3 cam_origin(0.0f, 0.0f, 0.0f);
-    float numSamples = 2500.0f;
+    float numSamples = 500.0f;
 
     window.initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT);
 

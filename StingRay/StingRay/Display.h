@@ -34,7 +34,6 @@ public:
 	V3 center_one;
 	float radius_one = 0;
 	int repeat_samples = 0;
-	int num_bounces = 0;
 
 	void initDisplay(int screen_width, int screen_height);
 	void updateDisplay(V3 cam_origin, float numSamples, int numBounces);

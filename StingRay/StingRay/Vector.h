@@ -25,6 +25,7 @@ public:
 	V3 copy();
 	void reset();
 
+	float distance_to(V3 other);
 	double length();
 	float squared_length();
 
