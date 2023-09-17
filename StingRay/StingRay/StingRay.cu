@@ -137,7 +137,7 @@ int main(int argc, char** arcgv) {
         auto t1 = high_resolution_clock::now();
 
 
-        Uint32* pixels = (Uint32*)malloc((SCREEN_HEIGHT * SCREEN_WIDTH) * sizeof(Uint32));
+        Uint32* pixels = (Uint32*) malloc((SCREEN_HEIGHT * SCREEN_WIDTH) * sizeof(Uint32));
         window.texture = SDL_CreateTexture(window.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
 
         if (window.repeat_samples < numSamples) {
@@ -175,10 +175,11 @@ int main(int argc, char** arcgv) {
 
         cout << window.repeat_samples << "/" << numSamples << " samples " << ms_double.count() << " ms";
 
+        free(pixels);
+
         switch (event.type) {
         case SDL_QUIT:
             running = false;
-            free(pixels);
             break;
         default:
             break;
