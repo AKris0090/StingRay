@@ -1,28 +1,27 @@
 #pragma once
-#include "Tracer.h"
+#include "Tracer.cuh"
 #include <SDL.h>
-#include <execution>
 #include <chrono>
-#include "Sphere.h"
-#include "PBRMat.h"
-#include "Vector.h"
-#include "Ray.h"
+#include "Sphere.cuh"
+#include "PBRMat.cuh"
+#include "Vector.cuh"
+#include "Ray.cuh"
+#include "cuda.h"
+#include "cuda_runtime.h"
+#include <iostream>
 
 using namespace std;
 
 class DisplayWindow {
 public:
-	Tracer tracer;
 	int SCREEN_WIDTH = 0;
 	int SCREEN_HEIGHT = 0;
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 	SDL_Texture* texture;
 	SDL_Surface* surface;
-	Uint32* pixels;
 	V3* totals;
-	AreaLight* a;
-	AreaLight* b;
+	V3* devPixels;
 
 	Uint32 segment_width = 0;
 	float cam_aspect_width = 0;
@@ -36,9 +35,7 @@ public:
 	int repeat_samples = 0;
 
 	void initDisplay(int screen_width, int screen_height);
-	void updateDisplay(V3 cam_origin, float numSamples, int numBounces);
-	vector<Sphere> objects;
-	vector<AreaLight> lights;
-	vector<int> width_iterator;
-	vector<int> height_iterator;
+	PBRMaterial** mats;
+	Sphere** objects;
+	AreaLight** lights;
 };

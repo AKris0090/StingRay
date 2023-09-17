@@ -1,8 +1,8 @@
-#include "Ray.h"
+#include "Ray.cuh"
 #include <iostream>
 
-hitReg Ray::intersect(V3 center, float min_t, float max_t, float radius) {
-	hit = { false, 0.0f, V3(0.0f, 0.0f, 0.0f) };
+__device__ hitReg Ray::intersect(V3 center, float min_t, float max_t, float radius) {
+	hit = { false, 0.0f, V3(0.0f, 0.0f, 0.0f), V3(0.0f, 0.0f, 0.0f) };
 	oc = this->origin.sub(center);
 	a = this->direction.dot(this->direction);
 	b = oc.dot(this->direction);
@@ -24,10 +24,9 @@ hitReg Ray::intersect(V3 center, float min_t, float max_t, float radius) {
 			return hit;
 		}
 	}
-	hit.hit = false;
 	return hit;
 }
 
-Ray Ray::copy() {
+__device__ Ray Ray::copy() {
 	return Ray(this->origin, this->direction);
 }

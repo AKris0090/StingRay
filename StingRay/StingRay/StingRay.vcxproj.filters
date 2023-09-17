@@ -36,46 +36,44 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="StingRay.cpp">
+    <CudaCompile Include="StingRay.cu">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Display.cpp">
+    </CudaCompile>
+    <CudaCompile Include="Display.cuh">
       <Filter>Source Files\Display</Filter>
-    </ClCompile>
-    <ClCompile Include="Vector.cpp">
-      <Filter>Source Files\Vector</Filter>
-    </ClCompile>
-    <ClCompile Include="Tracer.cpp">
-      <Filter>Source Files\Tracer</Filter>
-    </ClCompile>
-    <ClCompile Include="Ray.cpp">
-      <Filter>Source Files\Ray</Filter>
-    </ClCompile>
-    <ClCompile Include="PBRMat.cpp">
-      <Filter>Source Files\PBRMat</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Display.h">
+    </CudaCompile>
+    <CudaCompile Include="Display.cu">
       <Filter>Source Files\Display</Filter>
-    </ClInclude>
-    <ClInclude Include="Vector.h">
-      <Filter>Source Files\Vector</Filter>
-    </ClInclude>
-    <ClInclude Include="Tracer.h">
-      <Filter>Source Files\Tracer</Filter>
-    </ClInclude>
-    <ClInclude Include="Ray.h">
-      <Filter>Source Files\Ray</Filter>
-    </ClInclude>
-    <ClInclude Include="Sphere.h">
-      <Filter>Source Files\Sphere</Filter>
-    </ClInclude>
-    <ClInclude Include="PBRMat.h">
-      <Filter>Source Files\PBRMat</Filter>
-    </ClInclude>
-    <ClInclude Include="AreaLight.h">
+    </CudaCompile>
+    <CudaCompile Include="AreaLight.cuh">
       <Filter>Source Files\Lights</Filter>
-    </ClInclude>
+    </CudaCompile>
+    <CudaCompile Include="PBRMat.cu">
+      <Filter>Source Files\PBRMat</Filter>
+    </CudaCompile>
+    <CudaCompile Include="PBRMat.cuh">
+      <Filter>Source Files\PBRMat</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Ray.cu">
+      <Filter>Source Files\Ray</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Ray.cuh">
+      <Filter>Source Files\Ray</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Sphere.cuh">
+      <Filter>Source Files\Sphere</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Tracer.cu">
+      <Filter>Source Files\Tracer</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Tracer.cuh">
+      <Filter>Source Files\Tracer</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Vector.cu">
+      <Filter>Source Files\Vector</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Vector.cuh">
+      <Filter>Source Files\Vector</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>
