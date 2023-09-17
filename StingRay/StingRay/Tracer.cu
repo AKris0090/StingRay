@@ -1,5 +1,4 @@
 #include "Tracer.cuh"
-#include <execution>
 #include <iostream>
 using namespace std;
 
@@ -44,6 +43,7 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** li
 		}
 
 		// SOMETHING WRONG WITH THE REFLECTIONS
+		// REDO ENTIRE COLOR AND LIGHT INTENISTY CALCULATIONS AND ADDING
 		if (hit_anything) {
 			V3 true_color(0, 0, 0);
 			Ray secondaryRay = Ray(V3(0, 0, 0), V3(0, 0, 0));

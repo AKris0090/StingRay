@@ -13,7 +13,6 @@ public:
 	float IOR;
 	float transmission;
 	float emission_strength;
-	curandState* globalState;
 
 
 	__device__ PBRMaterial() { base_color = V3(0, 0, 0); transmission = 0.0f; specular = roughness = 0.5f; emission_strength = 1.0f; IOR = 1.45f; }

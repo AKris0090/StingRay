@@ -4,7 +4,6 @@
 #include "Sphere.cuh"
 #include "AreaLight.cuh"
 #include "device_launch_parameters.h"
-#include "thrust/device_vector.h"
 
 using namespace std;
 
