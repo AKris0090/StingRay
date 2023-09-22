@@ -23,7 +23,6 @@ public:
 	V3* totals;
 	V3* devPixels;
 
-	Uint32 segment_width = 0;
 	float cam_aspect_width = 0;
 	float cam_aspect_height = 0;
 	V3 bot_left;

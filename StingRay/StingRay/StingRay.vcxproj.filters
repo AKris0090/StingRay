@@ -34,6 +34,9 @@
     <Filter Include="Source Files\Lights">
       <UniqueIdentifier>{734157fc-1633-41b5-b497-b57e2b47f887}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Triangle">
+      <UniqueIdentifier>{b26895a1-de0e-453d-882a-f2ee07d90dd5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="StingRay.cu">
@@ -75,5 +78,10 @@
     <CudaCompile Include="Vector.cuh">
       <Filter>Source Files\Vector</Filter>
     </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Triangle.cuh">
+      <Filter>Source Files\Triangle</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

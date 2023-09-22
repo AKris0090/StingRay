@@ -4,10 +4,14 @@
 #include <random>
 #include <curand.h>
 #include <curand_kernel.h>
+#include <math_constants.h>
+#include "tiny_obj_loader.h"
 
+#define TINYOBJLOADER_IMPLEMENTATION
 #define SCREEN_WIDTH 1200
 #define SCREEN_HEIGHT 600
-#define NUMBOUNCES 3
+#define NUMBOUNCES 5
+#define CAM_VFOV 90.0f
 
 using namespace std;
 
@@ -46,24 +50,47 @@ __global__ void setup_kernel(Sphere** objects, AreaLight** lights, PBRMaterial**
         V3 center_one = { 0, 0, -1 };
         V3 radius_one = 1.5;
 
-        PBRMaterial* metal = new PBRMaterial(V3(204.0f, 204.0f, 204.0f), 0.0f, 0.05f, 0.0f, 0.0f, 0.0f);
-        PBRMaterial* metal2 = new PBRMaterial(V3(204.0f, 204.0f, 204.0f), 0.0f, 0.25f, 0.0f, 0.0f, 0.0f);
+        PBRMaterial* metal = new PBRMaterial(V3(255.0f, 255.0f, 255.0f), 0.0f, 0.051f, 0.0f, 0.0f, 0.0f);
+        PBRMaterial* metal2 = new PBRMaterial(V3(180.0f, 180.0f, 180.0f), 0.0f, 0.25f, 0.0f, 0.0f, 0.0f);
         PBRMaterial* red = new PBRMaterial(V3(255.0f, 0.0f, 0.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-        PBRMaterial* blue = new PBRMaterial(V3(0.0f, 0.0f, 255.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+        PBRMaterial* blue = new PBRMaterial(V3(0.0f, 0.0f, 255.0f), 0.0f, 1.0f, 0.0f, 0.0f, 10.0f);
 
         *(mats) = metal;
         *(mats + 1) = metal2;
         *(mats + 2) = red;
         *(mats + 3) = blue;
 
-        *(lights) = new AreaLight(Sphere(V3(-2.0f, 2.0f, 1.0f), 0.15f), 1500.0f);
-        *(lights + 1) = new AreaLight(Sphere(V3(2.0f, 2.0f, 1.0f), 0.15f), 1500.0f);
+        *(lights) = new AreaLight(Sphere(V3(1.0f, 1.5f, 2.0f), 0.15f), 9.0f);
+        *(lights + 1) = new AreaLight(Sphere(V3(-1.0f, 1.5f, 2.0f), 0.15f), 9.0f);
 
-        *(objects) = new Sphere(V3(0, 0, -1), 0.5, mats[3]);
+        *(objects) = new Sphere(V3(0.0, 0.0, -1), 0.5, mats[3]);
         *(objects + 1) = new Sphere(V3(0, -100.5, -1), 100, mats[2]);
         *(objects + 2) = new Sphere(V3(1, 0, -1), 0.5, mats[0]);
         *(objects + 3) = new Sphere(V3(-1, 0, -1), 0.5, mats[1]);
     }
+}
+
+void loadModel() {
+    std::string inputfile = "cornell_box.obj";
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+
+    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, inputfile.c_str());
+
+    if (!warn.empty()) {
+        std::cout << warn << std::endl;
+    }
+
+    if (!err.empty()) {
+      
+        std::cerr << err << std::endl;
+    }
+
+    if (!ret) {
+        exit(1);
+    }
+
 }
 
 
@@ -114,21 +141,33 @@ int main(int argc, char** arcgv) {
     gpuChk(cudaMallocManaged((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
     gpuChk(cudaMallocManaged((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
 
+    float aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+    V3 u, v, w;
 
-    float cam_aspect_width = 4;
-    float cam_aspect_height = 2;
+    V3 cam_origin = V3(0.0, 0.0, 0.5);
+    V3 lookat = V3(0.0, 0.0, -1.0);
+    V3 up = V3(0.0, 1.0, 0.0);
+
+    float theta = CAM_VFOV * (CUDART_PI_F / 180.0f);
+    float h_height = tan(theta / 2.0f);
+    float h_width = aspect * h_height;
+
     V3* copyTotals;
 
-    window.bot_left = V3(-cam_aspect_width, -cam_aspect_height, -1);
-    window.horizontal = V3(cam_aspect_width * 2, 0, 0);
-    window.vertical = V3(0, cam_aspect_height * 2, 0);
+    w = (cam_origin.sub(lookat)).normalize();
+    u = (up.cross(w)).normalize();
+    v = w.cross(u);
+
+    window.bot_left = cam_origin.sub(u.mul_val(h_width)).sub(v.mul_val(h_height)).sub(w);
+    window.horizontal = u.mul_val(2.0f * h_width);
+    window.vertical = v.mul_val(2.0f * h_height);
 
     // setup seeds
     setup_kernel<<<1, 1>>>(window.objects, window.lights, window.mats, numLights, numObjects);
     gpuChk(cudaDeviceSynchronize());
     gpuChk(cudaPeekAtLastError());
 
-    window.copied_origin = V3(0.0, 0.0, 0.0);
+    window.copied_origin = cam_origin;
 
     while (SDL_PollEvent(&event) || running) {
 
@@ -176,6 +215,7 @@ int main(int argc, char** arcgv) {
         cout << window.repeat_samples << "/" << numSamples << " samples " << ms_double.count() << " ms";
 
         free(pixels);
+        SDL_DestroyTexture(window.texture);
 
         switch (event.type) {
         case SDL_QUIT:

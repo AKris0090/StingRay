@@ -188,6 +188,9 @@
     <CudaCompile Include="Tracer.cuh" />
     <CudaCompile Include="Vector.cuh" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Triangle.cuh" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(ProgramFiles) (x86)\MSBuild\Microsoft.Cpp\v4.0\BuildCustomizations\CUDA 12.1.targets" />
