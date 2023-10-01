@@ -26,6 +26,7 @@ public:
 	float disc;
 	float temp_quad_f = 0;
 	__device__ hitReg intersect(V3 center, float min_t, float max_t, float radius);
+	__device__ hitReg intersect(V3 v1, V3 v2, V3 v3, V3 normal, float min_t, float max_t);
 
 	__device__ Ray copy();
 };

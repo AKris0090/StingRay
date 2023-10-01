@@ -66,7 +66,7 @@ __global__ void setup_kernel(Sphere** objects, AreaLight** lights, PBRMaterial**
         *(objects) = new Sphere(V3(0.0, 0.0, -1), 0.5, mats[3]);
         *(objects + 1) = new Sphere(V3(0, -100.5, -1), 100, mats[2]);
         *(objects + 2) = new Sphere(V3(1, 0, -1), 0.5, mats[0]);
-        *(objects + 3) = new Sphere(V3(-1, 0, -1), 0.5, mats[1]);
+        *(objects + 3) = new Sphere(V3(-1, 0, -1), 0.5, mats[0]);
     }
 }
 
@@ -76,7 +76,10 @@ void loadModel() {
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
 
-    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, inputfile.c_str());
+    std::string warn;
+    std::string err;
+
+    //bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, inputfile.c_str());
 
     if (!warn.empty()) {
         std::cout << warn << std::endl;
@@ -87,9 +90,9 @@ void loadModel() {
         std::cerr << err << std::endl;
     }
 
-    if (!ret) {
-        exit(1);
-    }
+    //if (!ret) {
+    //    exit(1);
+    //}
 
 }
 
