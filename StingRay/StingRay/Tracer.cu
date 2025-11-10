@@ -111,7 +111,12 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** li
 		for (int j = 0; j < numLights; j++) {
 			AreaLight l = *(*(lights + j));
 			V3 lightRay = (l.pos.origin - hit.hitPoint).normalize();
-			Ray shadowRay = Ray(hit.hitPoint + hit.normal_vector * 1e-4f, lightRay);
+
+			// random light sample (for soft shadows)
+			V3 randLightPos = l.pos.origin + curand_uniform(localDevState) * l.pos.radius;
+			V3 shadowSampleDir = (randLightPos - hit.hitPoint).normalize();
+
+			Ray shadowRay = Ray(hit.hitPoint + hit.normal_vector * 1e-4f, shadowSampleDir);
 
 			direct += Cook_Torrence(hit.normal_vector, -cur_r.direction, lightRay, hitMaterial) * calculate_shadow_ray(shadowRay, objects, l, hit, numObjects);
 		}
