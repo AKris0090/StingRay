@@ -5,13 +5,11 @@
 #include <curand.h>
 #include <curand_kernel.h>
 #include <math_constants.h>
-#include "tiny_obj_loader.h"
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#define SCREEN_WIDTH 1200
-#define SCREEN_HEIGHT 600
-#define NUMBOUNCES 5
-#define CAM_VFOV 90.0f
+constexpr int SCREEN_WIDTH = 1200;
+constexpr int SCREEN_HEIGHT = 600;
+constexpr int NUM_BOUNCES = 5;
+constexpr float CAM_VFOV_DEG = 90.0f;
 
 using namespace std;
 
@@ -44,14 +42,11 @@ __device__ float clampRGB(float in) {
     }
 }
 
-// Setup CUDA resources in device memory. Only once.
+// Setup CUDA resources in device memory only once
 __global__ void setup_kernel(Sphere** objects, AreaLight** lights, PBRMaterial** mats, int numLights, int numObjects) {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
-        V3 center_one = { 0, 0, -1 };
-        V3 radius_one = 1.5;
-
-        PBRMaterial* metal = new PBRMaterial(V3(255.0f, 255.0f, 255.0f), 0.0f, 0.051f, 0.0f, 0.0f, 0.0f);
-        PBRMaterial* metal2 = new PBRMaterial(V3(180.0f, 180.0f, 180.0f), 0.0f, 0.25f, 0.0f, 0.0f, 0.0f);
+        PBRMaterial* metal = new PBRMaterial(V3(255.0f, 255.0f, 255.0f), 1.0f, 0.05, 0.0f, 0.0f, 0.0f);
+        PBRMaterial* metal2 = new PBRMaterial(V3(180.0f, 180.0f, 180.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
         PBRMaterial* red = new PBRMaterial(V3(255.0f, 0.0f, 0.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
         PBRMaterial* blue = new PBRMaterial(V3(0.0f, 0.0f, 255.0f), 0.0f, 1.0f, 0.0f, 0.0f, 10.0f);
 
@@ -66,36 +61,9 @@ __global__ void setup_kernel(Sphere** objects, AreaLight** lights, PBRMaterial**
         *(objects) = new Sphere(V3(0.0, 0.0, -1), 0.5, mats[3]);
         *(objects + 1) = new Sphere(V3(0, -100.5, -1), 100, mats[2]);
         *(objects + 2) = new Sphere(V3(1, 0, -1), 0.5, mats[0]);
-        *(objects + 3) = new Sphere(V3(-1, 0, -1), 0.5, mats[0]);
+        *(objects + 3) = new Sphere(V3(-1, 0, -1), 0.5, mats[1]);
     }
 }
-
-void loadModel() {
-    std::string inputfile = "cornell_box.obj";
-    tinyobj::attrib_t attrib;
-    std::vector<tinyobj::shape_t> shapes;
-    std::vector<tinyobj::material_t> materials;
-
-    std::string warn;
-    std::string err;
-
-    //bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, inputfile.c_str());
-
-    if (!warn.empty()) {
-        std::cout << warn << std::endl;
-    }
-
-    if (!err.empty()) {
-      
-        std::cerr << err << std::endl;
-    }
-
-    //if (!ret) {
-    //    exit(1);
-    //}
-
-}
-
 
 __global__ void updateDisplay(V3* totals, V3* devPixels, V3 hor, V3 ver, V3 botL, V3 copOrigin, float numSamples, const int numBounces, int numObjects, Sphere** objects, int numLights, AreaLight** lights, curandState* devStates, int repeatSamples, unsigned long seed) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -105,16 +73,17 @@ __global__ void updateDisplay(V3* totals, V3* devPixels, V3 hor, V3 ver, V3 botL
     curandState localDevState = devStates[index];
     if ((i >= SCREEN_WIDTH) || (j >= SCREEN_HEIGHT)) return;
 
-    V3 u = hor.mul_val((float)(i + (curand_uniform(&localDevState))) / (float) SCREEN_WIDTH);
-    V3 v = ver.mul_val((float)(j + (curand_uniform(&localDevState))) / (float) SCREEN_HEIGHT);
+    V3 u = hor * ((float)(i + (curand_uniform(&localDevState))) / (float) (SCREEN_WIDTH - 1.0));
+    V3 v = ver * ((float)(j + (curand_uniform(&localDevState))) / (float) (SCREEN_HEIGHT - 1.0));
 
-    Ray primary_ray(copOrigin, botL.add(u).add(v).sub(copOrigin));
+    V3 dir = (botL + u + v - copOrigin).normalize();
+    Ray primary_ray(copOrigin, dir);
     V3 ret_color = Tracer::trace_ray(primary_ray, objects, lights, numBounces, numObjects, numLights, &localDevState);
 
     totals[index].x += clampRGB(ret_color.x);
     totals[index].y += clampRGB(ret_color.y);
     totals[index].z += clampRGB(ret_color.z);
-    devPixels[index] = totals[index].div_val(repeatSamples);
+    devPixels[index] = totals[index] / repeatSamples;
 }
 
 int main(int argc, char** arcgv) {
@@ -143,6 +112,7 @@ int main(int argc, char** arcgv) {
     gpuChk(cudaMallocManaged((void**)&(window.mats), 4 * sizeof(PBRMaterial*)));
     gpuChk(cudaMallocManaged((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
     gpuChk(cudaMallocManaged((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
+    gpuChk(cudaMallocManaged((void**)&(window.copied_origin), sizeof(V3)));
 
     float aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
     V3 u, v, w;
@@ -151,19 +121,19 @@ int main(int argc, char** arcgv) {
     V3 lookat = V3(0.0, 0.0, -1.0);
     V3 up = V3(0.0, 1.0, 0.0);
 
-    float theta = CAM_VFOV * (CUDART_PI_F / 180.0f);
-    float h_height = tan(theta / 2.0f);
+    float theta = CAM_VFOV_DEG * (CUDART_PI_F / 180.0f);
+    float h_height = tanf(theta / 2.0f);
     float h_width = aspect * h_height;
 
     V3* copyTotals;
 
-    w = (cam_origin.sub(lookat)).normalize();
+    w = (cam_origin - lookat).normalize();
     u = (up.cross(w)).normalize();
     v = w.cross(u);
 
-    window.bot_left = cam_origin.sub(u.mul_val(h_width)).sub(v.mul_val(h_height)).sub(w);
-    window.horizontal = u.mul_val(2.0f * h_width);
-    window.vertical = v.mul_val(2.0f * h_height);
+    window.bot_left = cam_origin - u * h_width - v * h_height - w;
+    window.horizontal = u * (2.0f * h_width);
+    window.vertical = v * (2.0f * h_height);
 
     // setup seeds
     setup_kernel<<<1, 1>>>(window.objects, window.lights, window.mats, numLights, numObjects);
@@ -172,20 +142,46 @@ int main(int argc, char** arcgv) {
 
     window.copied_origin = cam_origin;
 
-    while (SDL_PollEvent(&event) || running) {
+    window.texture = SDL_CreateTexture(window.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    while (running) {
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) running = false;
+
+            if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.sym) {
+                case SDLK_w: cam_origin.z += 1; break;
+                case SDLK_s: cam_origin.z -= 1; break;
+                case SDLK_a: cam_origin.x -= 1; break;
+                case SDLK_d: cam_origin.x += 1; break;
+                }
+            }
+        }
 
         cout << "\r";
 
         auto t1 = high_resolution_clock::now();
 
-
         Uint32* pixels = (Uint32*) malloc((SCREEN_HEIGHT * SCREEN_WIDTH) * sizeof(Uint32));
-        window.texture = SDL_CreateTexture(window.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+        if (event.type == SDL_KEYDOWN) {
+            if (event.key.keysym.sym == SDLK_w) {
+                cam_origin.z += 1;
+            }
+            else if (event.key.keysym.sym == SDLK_a) {
+                cam_origin.x -= 1;
+            }
+            else if (event.key.keysym.sym == SDLK_d) {
+                cam_origin.x += 1;
+            }
+            else if (event.key.keysym.sym == SDLK_s) {
+                cam_origin.z -= 1;
+            }
+        }
 
         if (window.repeat_samples < numSamples) {
-
             window.repeat_samples += 1;
-            updateDisplay<<<blocks, threads>>>(window.totals, window.devPixels, window.horizontal, window.vertical, window.bot_left, window.copied_origin, numSamples, NUMBOUNCES, numObjects, window.objects, numLights, window.lights, devStates, window.repeat_samples, unsigned(rand()));
+            updateDisplay<<<blocks, threads>>>(window.totals, window.devPixels, window.horizontal, window.vertical, window.bot_left, window.copied_origin, numSamples, NUM_BOUNCES, numObjects, window.objects, numLights, window.lights, devStates, window.repeat_samples, unsigned(rand()));
             gpuChk(cudaDeviceSynchronize());
             gpuChk(cudaPeekAtLastError());
 
@@ -204,31 +200,23 @@ int main(int argc, char** arcgv) {
             SDL_UpdateTexture(window.texture, NULL, pixels, SCREEN_WIDTH * sizeof(Uint32));
             SDL_RenderClear(window.renderer);
             SDL_RenderCopyEx(window.renderer, window.texture, NULL, NULL, 0, NULL, SDL_FLIP_VERTICAL);
-            SDL_DestroyTexture(window.texture);
             SDL_RenderPresent(window.renderer);
+
+            auto t2 = high_resolution_clock::now();
+
+            // Getting number of milliseconds as an integer.
+            auto ms_int = duration_cast<milliseconds>(t2 - t1);
+
+            // Getting number of milliseconds as a double
+            duration<double, std::milli> ms_double = t2 - t1;
+
+            cout << window.repeat_samples << "/" << numSamples << " samples " << ms_double.count() << " ms";
         }
-        auto t2 = high_resolution_clock::now();
-
-        /* Getting number of milliseconds as an integer. */
-        auto ms_int = duration_cast<milliseconds>(t2 - t1);
-
-        /* Getting number of milliseconds as a double. */
-        duration<double, std::milli> ms_double = t2 - t1;
-
-        cout << window.repeat_samples << "/" << numSamples << " samples " << ms_double.count() << " ms";
 
         free(pixels);
-        SDL_DestroyTexture(window.texture);
-
-        switch (event.type) {
-        case SDL_QUIT:
-            running = false;
-            break;
-        default:
-            break;
-        }
     }
     SDL_DestroyRenderer(window.renderer);
+    SDL_DestroyTexture(window.texture);
     SDL_DestroyWindow(window.window);
     cudaFree(window.totals);
     cudaFree(devStates);

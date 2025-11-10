@@ -1,39 +1,51 @@
 #include "PBRMat.cuh"
 
-__device__ V3 PBRMaterial::random_direction(curandState* localDevState) {
-	V3 random = V3(curand_uniform(localDevState), curand_uniform(localDevState), curand_uniform(localDevState)).normalize().mul_val(2.0).sub(V3(1.0));
-	//while (random.squared_length() >= 1) {
-	//	random = V3(curand_uniform(localDevState), curand_uniform(localDevState), curand_uniform(localDevState)).mul_val(2.0).sub(V3(1));
-	//}
-	return random;
-}
-
-__device__ V3 PBRMaterial::random_direction_in_n(float radius, curandState* localDevState) {
-	V3 random = random_direction(localDevState);
-	return random.mul_val(radius);
-}
-
 // Perfect reflection
 __device__ V3 PBRMaterial::reflect(Ray& in_dir, hitReg& hR) {
 	V3 normal_dir = in_dir.direction.normalize();
-	V3 reflected = normal_dir.sub(hR.normal_vector.mul_val(2 * normal_dir.dot(hR.normal_vector)));
-	return reflected;
+	V3 reflected = normal_dir - (hR.normal_vector * (2 * normal_dir.dot(hR.normal_vector)));
+	return reflected.normalize();
 }
 
-// Imperfect scattering
-__device__ V3 PBRMaterial::random_scatter(Ray& in_dir, hitReg& hR, curandState* localDevState) {
-	return in_dir.get_at(hR.time).add(hR.normal_vector.add(random_direction(localDevState)));
+// diffuse (imperfect) scattering
+__device__ V3 PBRMaterial::random_in_hemisphere(const V3& normal, curandState* localDevState) {
+	float r1 = curand_uniform(localDevState);
+	float r2 = curand_uniform(localDevState);
+
+	float phi = 2.0f * PI * r1;
+	float cosTheta = sqrtf(1.0f - r2);
+	float sinTheta = sqrtf(r2);
+
+	// Local space direction
+	V3 local(
+		cosf(phi) * sinTheta,
+		sinf(phi) * sinTheta,
+		cosTheta
+	);
+
+	// Transform local -> world space
+	V3 tangent, bitangent;
+	if (fabs(normal.x) > fabs(normal.z))
+		tangent = V3(-normal.y, normal.x, 0.0f).normalize();
+	else
+		tangent = V3(0.0f, -normal.z, normal.y).normalize();
+	bitangent = normal.cross(tangent);
+
+	return (tangent * local.x + bitangent * local.y + normal * local.z).normalize();
 }
 
 __device__ V3 PBRMaterial::hitColor(Ray& in_ray, hitReg& hR, Ray& out_ray, curandState* localDevState){
-	if (roughness <= 0.0f) {
-		out_ray = Ray(in_ray.get_at(hR.time), this->reflect(in_ray, hR));
-	}
-	else if (roughness >= 1.0f) {
-		out_ray = Ray(in_ray.get_at(hR.time), this->random_scatter(in_ray, hR, localDevState).sub(in_ray.get_at(hR.time)));
+	float rand = curand_uniform(localDevState);
+	if (rand < metallic) {
+		// specular reflection
+		V3 reflectedDir = reflect(in_ray, hR);
+		out_ray = Ray(hR.hitPoint + hR.normal_vector * 1e-4f, reflectedDir);
 	}
 	else {
-		out_ray = Ray(in_ray.get_at(hR.time), this->reflect(in_ray, hR).mul_val((1.0f - this->roughness)).add(this->random_scatter(in_ray, hR, localDevState).mul_val(roughness)));
+		// diffuse
+		V3 diffuseDir = hR.normal_vector + random_in_hemisphere(hR.normal_vector, localDevState);
+		out_ray = Ray(hR.hitPoint + hR.normal_vector * 1e-4f, diffuseDir.normalize());
 	}
-	return this->base_color.div_val(255.0f);
+
+	return this->base_color / 255.0f;
 }

@@ -24,6 +24,7 @@
     <ProjectGuid>{f5bcb2da-9317-4f70-a35f-4e4082dcdfc7}</ProjectGuid>
     <RootNamespace>StingRay</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <CudaToolkitCustomDir>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.0</CudaToolkitCustomDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -127,7 +128,7 @@
     </ProjectReference>
     <CudaCompile>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
-      <AdditionalOptions>-g %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-g -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -147,15 +148,21 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;cudart_static.lib;cudart.lib;cudadevrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CUDA_PATH)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <ProjectReference>
       <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
     </ProjectReference>
     <CudaCompile>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
-      <AdditionalOptions>-g %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-g -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <Include>
+      </Include>
+      <CodeGeneration>compute_86,sm_86</CodeGeneration>
     </CudaCompile>
+    <CudaLink>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </CudaLink>
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="Display.cu">
@@ -173,9 +180,6 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">-std=c++17 -Xcompiler "/std:c++17" %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
     <CudaCompile Include="Tracer.cu">
-      <FileType>Document</FileType>
-    </CudaCompile>
-    <CudaCompile Include="Vector.cu">
       <FileType>Document</FileType>
     </CudaCompile>
   </ItemGroup>

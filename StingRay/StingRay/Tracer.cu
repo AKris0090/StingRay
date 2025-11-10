@@ -2,47 +2,96 @@
 #include <iostream>
 using namespace std;
 
-__device__ V3 Tracer::get_light_intensity(Ray in, Ray secondary, Sphere** objects, V3 hitcolor, AreaLight a, hitReg primHit, PBRMaterial* mat, int numObjects) {
+__device__ V3 Tracer::calculate_shadow_ray(Ray shadowRay, Sphere** objects, AreaLight a, hitReg primHit, int numObjects) {
+	// check if the ray hits anything
 	bool hit_anything = false;
 	float closest_so_far = FLT_MAX;
 	for (int k = 0; k < numObjects; k++) {
 		Sphere current = *(*(objects + k));
-		hitReg temp_rec = in.intersect(current.origin, 0.00001f, closest_so_far, current.radius);
+		hitReg temp_rec = shadowRay.intersect(current.origin, 0.00001f, closest_so_far, current.radius);
 		if (temp_rec.hit) {
 			hit_anything = true;
 			closest_so_far = temp_rec.time;
 		}
 	}
 	if (!hit_anything) {
-		hitReg temp_rec = secondary.intersect(a.pos.origin, 0.00001f, closest_so_far, a.pos.radius);
-		if (temp_rec.hit) {
-			return a.color;
-		}
-		else {
-			// object albedo * light color * dot product between hit normal and light vector
-			return hitcolor.mul(((a.color).mul_val((primHit.normal_vector.dot(in.direction.normalize())))).mul_val(mat->roughness));
-		}
-	}
-	else {
+		return a.color * a.get_intensity(primHit.hitPoint.distance_to(a.pos.origin));
+	} else {
 		return V3(0, 0, 0);
 	}
 }
 
+// normal distribution function
+__device__ float D_GGX(float ndoth, float roughness) {
+	float a = roughness * roughness;
+	float a2 = a * a;
+	float denom = (ndoth * ndoth) * (a2 - 1.0f) + 1.0f;
+	return a2 / (PI * denom * denom);
+}
+
+// geometry visibility function (self-shadowing, microfacets)
+__device__ float G_SchlickGGX(float ndotv, float roughness) {
+	float r = (roughness + 1.0f);
+	float k = (r * r) / 8.0f;
+	return ndotv / (ndotv * (1.0f - k) + k);
+}
+
+__device__ float G_Smith(float ndotv, float ndotl, float roughness) {
+	return G_SchlickGGX(ndotv, roughness) * G_SchlickGGX(ndotl, roughness);
+}
+
+// fresnel approximation
+__device__ V3 F_Schlick(float cosTheta, const V3& F0) {
+	return F0 + (V3(1.0f) - F0) * powf(1.0f - cosTheta, 5.0f);
+}
+
+// cook-torrence BRDF
+__device__ V3 Cook_Torrence(const V3& normal, const V3& view, const V3& light, const PBRMaterial* mat) {
+	V3 half = (view + light).normalize();
+
+	float ndotl = fmaxf(normal.dot(light), 0.0f);
+	float ndotv = fmaxf(normal.dot(view), 0.0f);
+	float ndoth = fmaxf(normal.dot(half), 0.0f);
+	float vdoth = fmaxf(view.dot(half), 0.0f);
+
+	V3 albedo = mat->base_color / 255.0f;
+
+	V3 F0 = V3(0.04f);
+	F0 = F0 * (1.0f - mat->metallic) + albedo * mat->metallic;
+
+	float normalDist = D_GGX(ndoth, mat->roughness);
+	float geom = G_Smith(ndotv, ndotl, mat->roughness);
+	V3 F = F_Schlick(vdoth, F0);
+
+	V3 numerator = F * normalDist * geom;
+	float denominator = 4.0f * ndotv * ndotl + 1e-4f;
+
+	V3 spec = numerator / denominator;
+	V3 ks = F;
+	V3 kd = V3(1.0f) - ks;
+	kd *= (1.0f - mat->metallic);
+
+	return (kd * albedo / PI + spec) * ndotl;
+}
+
 __device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** lights, int max_bounces, int numObjects, int numLights, curandState* localDevState) {
 	Ray cur_r = ray;
-	V3 cur_attenuation = V3(0.0, 0.0, 0.0);
+	V3 radiance(0.0f);
+	V3 attenuation(1.0f);
 	PBRMaterial* prevMat = nullptr;
+	// iterative tracer (since no recursion on GPU!!!)
 	for (int i = 0; i < max_bounces; i++) {
-		hitReg hit{ false, 0, V3(0, 0, 0) };
-		hitReg lightHit{ false, 0, V3(0, 0, 0) };
+
+		// Check if the primary ray hits anything
+		hitReg hit;
 		bool hit_anything = false;
 		float closest_so_far = FLT_MAX;
-		PBRMaterial* current_mat = nullptr;
+		PBRMaterial* hitMaterial = nullptr;
 		for (int j = 0; j < numObjects; j++) {
 			Sphere current = *(*(objects + j));
 			hitReg temp_rec = cur_r.intersect(current.origin, 0.00001f, closest_so_far, current.radius);
 			if (temp_rec.hit) {
-				current_mat = current.mat;
+				hitMaterial = current.mat;
 				hit_anything = true;
 				closest_so_far = temp_rec.time;
 				hit = temp_rec;
@@ -50,129 +99,26 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** li
 			}
 		}
 
-		if (hit_anything) {
-			Ray secondaryRay = Ray(V3(0, 0, 0), V3(0, 0, 0));
-			V3 attenuation = current_mat->hitColor(cur_r, hit, secondaryRay, localDevState);
-			V3 true_light_intensity = V3(0.0, 0.0, 0.0);
-			if (current_mat->roughness != 0) {
-				Ray secondaryRay(V3(0, 0, 0), V3(0, 0, 0));
-				V3 attenuation = current_mat->hitColor(cur_r, hit, secondaryRay, localDevState);
-				V3 true_color(0, 0, 0);
-				for (int j = 0; j < numLights; j++) {
-					AreaLight l = *(*(lights + j));
-					Ray shadowRay = Ray(hit.hitPoint, hit.hitPoint.add(l.pos.origin.add(current_mat->random_direction_in_n(l.pos.radius, localDevState))));
-					true_light_intensity = true_light_intensity.add(get_light_intensity(shadowRay, secondaryRay, objects, attenuation, l, hit, current_mat, numObjects));
-					true_light_intensity = true_light_intensity.mul_val(l.get_intensity((hit.hitPoint.distance_to(l.pos.origin))));
-				}
-				if (i == 0) {
-					cur_attenuation = true_light_intensity;
-				}
-				else {
-					cur_attenuation = cur_attenuation.add((true_light_intensity).mul_val(1.0 - prevMat->roughness));
-
-				}
-			}
-			prevMat = current_mat;
-			cur_r = secondaryRay;
-		} else {
-			//Multiply for global illumination (background color)
-			return cur_attenuation.mul_val(255.0);
+		if (!hit_anything) {
+			radiance += attenuation * V3(0.0f, 0.0f, 0.0f);
+			break;
 		}
 
-		//if (hit_anything) {
-		//	V3 target = hit.hitPoint.add(hit.normal_vector).add(current_mat->random_direction(localDevState));
-		//	V3 att = cur_attenuation;
-		//	cur_attenuation = att.mul_val(0.5f);
-		//	cur_r = Ray(hit.hitPoint, target.sub(hit.hitPoint));
-		//} else {
-		//	V3 unit_direction = cur_r.direction.normalize();
-		//	float t = 0.5f * (unit_direction.y + 1.0f);
-		//	V3 c = V3(1.0, 1.0, 1.0).mul_val(1.0 - t).add(V3(0.5, 0.7, 1.0).mul_val(t));
-		//	return c.mul(cur_attenuation).mul_val(255.0);
-		//}
+		Ray secondaryRay;
+		V3 albedo = hitMaterial->hitColor(cur_r, hit, secondaryRay, localDevState);
 
-		//if (hit_anything) {
-		//	return current_mat->base_color;
-		//}
-		//else {
-		//	return V3(0.0, 0.0, 0.0);
-		//}
+		V3 direct(0.0f);
+		for (int j = 0; j < numLights; j++) {
+			AreaLight l = *(*(lights + j));
+			V3 lightRay = (l.pos.origin - hit.hitPoint).normalize();
+			Ray shadowRay = Ray(hit.hitPoint + hit.normal_vector * 1e-4f, lightRay);
 
+			direct += Cook_Torrence(hit.normal_vector, -cur_r.direction, lightRay, hitMaterial) * calculate_shadow_ray(shadowRay, objects, l, hit, numObjects);
+		}
+
+		radiance += attenuation * direct;
+
+		cur_r = secondaryRay;
 	}
-	return V3(0.0, 0.0, 0.0);
+	return radiance * 255.0f;
 }
-
-//__device__ V3 Tracer::trace_ray_2(const Ray& ray, Sphere** objects, AreaLight** lights, int max_bounces, int numObjects, int numLights, curandState* localDevState) {
-//	Ray cur_r = ray;
-//	V3 cur_attenuation = V3(0.0, 0.0, 0.0);
-//	PBRMaterial* prevMat = nullptr;
-//	for (int i = 0; i < max_bounces; i++) {
-//		hitReg hit{ false, 0, V3(0, 0, 0) };
-//		hitReg lightHit{ false, 0, V3(0, 0, 0) };
-//		bool hit_anything = false;
-//		float closest_so_far = FLT_MAX;
-//		PBRMaterial* current_mat = nullptr;
-//		for (int j = 0; j < 1; j++) {
-//			Sphere current = *(*(objects + j));
-//			hitReg temp_rec = cur_r.intersect(current.origin, 0.00001f, closest_so_far, current.radius);
-//			if (temp_rec.hit) {
-//				current_mat = current.mat;
-//				hit_anything = true;
-//				closest_so_far = temp_rec.time;
-//				hit = temp_rec;
-//				hit.hitPoint = cur_r.get_at(hit.time);
-//			}
-//		}
-//
-//		if (hit_anything) {
-//			Ray secondaryRay = Ray(V3(0, 0, 0), V3(0, 0, 0));
-//			V3 attenuation = current_mat->hitColor(cur_r, hit, secondaryRay, localDevState);
-//			V3 true_light_intensity = V3(0.0, 0.0, 0.0);
-//			if (current_mat->roughness != 0) {
-//				Ray secondaryRay(V3(0, 0, 0), V3(0, 0, 0));
-//				V3 attenuation = current_mat->hitColor(cur_r, hit, secondaryRay, localDevState);
-//				V3 true_color(0, 0, 0);
-//				for (int j = 0; j < numLights; j++) {
-//					AreaLight l = *(*(lights + j));
-//					Ray shadowRay = Ray(hit.hitPoint, hit.hitPoint.add(l.pos.origin.add(current_mat->random_direction_in_n(l.pos.radius, localDevState))));
-//					true_light_intensity = true_light_intensity.add(get_light_intensity(shadowRay, secondaryRay, objects, attenuation, l, hit, current_mat, numObjects));
-//					true_light_intensity = true_light_intensity.mul_val(l.get_intensity((hit.hitPoint.distance_to(l.pos.origin))));
-//				}
-//				if (i == 0) {
-//					cur_attenuation = true_light_intensity;
-//				}
-//				else {
-//					cur_attenuation = cur_attenuation.add((true_light_intensity).mul_val(1.0 - prevMat->roughness));
-//
-//				}
-//			}
-//			prevMat = current_mat;
-//			cur_r = secondaryRay;
-//		}
-//		else {
-//			//Multiply for global illumination (background color)
-//			return cur_attenuation.mul_val(255.0);
-//		}
-//
-//		//if (hit_anything) {
-//		//	V3 target = hit.hitPoint.add(hit.normal_vector).add(current_mat->random_direction(localDevState));
-//		//	V3 att = cur_attenuation;
-//		//	cur_attenuation = att.mul_val(0.5f);
-//		//	cur_r = Ray(hit.hitPoint, target.sub(hit.hitPoint));
-//		//} else {
-//		//	V3 unit_direction = cur_r.direction.normalize();
-//		//	float t = 0.5f * (unit_direction.y + 1.0f);
-//		//	V3 c = V3(1.0, 1.0, 1.0).mul_val(1.0 - t).add(V3(0.5, 0.7, 1.0).mul_val(t));
-//		//	return c.mul(cur_attenuation).mul_val(255.0);
-//		//}
-//
-//		//if (hit_anything) {
-//		//	return current_mat->base_color;
-//		//}
-//		//else {
-//		//	return V3(0.0, 0.0, 0.0);
-//		//}
-//
-//	}
-//	return V3(0.0, 0.0, 0.0);
-//}

@@ -72,9 +72,6 @@
     <CudaCompile Include="Tracer.cuh">
       <Filter>Source Files\Tracer</Filter>
     </CudaCompile>
-    <CudaCompile Include="Vector.cu">
-      <Filter>Source Files\Vector</Filter>
-    </CudaCompile>
     <CudaCompile Include="Vector.cuh">
       <Filter>Source Files\Vector</Filter>
     </CudaCompile>
