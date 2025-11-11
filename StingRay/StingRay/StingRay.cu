@@ -10,6 +10,10 @@ constexpr int SCREEN_WIDTH = 1200;
 constexpr int SCREEN_HEIGHT = 600;
 constexpr int NUM_BOUNCES = 5;
 constexpr float CAM_VFOV_DEG = 90.0f;
+constexpr float MOVE_SENS = 0.1f;
+constexpr float LOOK_SENS = 0.1f;
+constexpr int PROGRESS_WIDTH = 50;
+constexpr int NUM_SAMPLES = 1000;
 
 using namespace std;
 
@@ -67,7 +71,22 @@ __global__ void setup_kernel(Sphere** objects, AreaLight** lights, PBRMaterial**
     }
 }
 
-__global__ void updateDisplay(V3* totals, V3* devPixels, V3 hor, V3 ver, V3 botL, V3 copOrigin, float numSamples, const int numBounces, int numObjects, Sphere** objects, int numLights, AreaLight** lights, curandState* devStates, int repeatSamples, unsigned long seed) {
+__host__ void resetDisplay(DisplayWindow& window) {
+    gpuChk(cudaDeviceSynchronize());
+
+    cudaFree(window.totals);
+    cudaFree(window.devPixels);
+
+    gpuChk(cudaMallocManaged((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
+    gpuChk(cudaMallocManaged((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
+
+    window.repeat_samples = 0;
+
+    gpuChk(cudaDeviceSynchronize());
+    gpuChk(cudaPeekAtLastError());
+}
+
+__global__ void updateDisplay(V3* totals, V3* devPixels, V3 hor, V3 ver, V3 botL, V3 copOrigin, const int numBounces, int numObjects, Sphere** objects, int numLights, AreaLight** lights, curandState* devStates, int repeatSamples, unsigned long seed) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
     int index = i + (j * SCREEN_WIDTH);
@@ -88,6 +107,25 @@ __global__ void updateDisplay(V3* totals, V3* devPixels, V3 hor, V3 ver, V3 botL
     devPixels[index] = totals[index] / repeatSamples;
 }
 
+void updateProgressBar(float progress, std::chrono::steady_clock::time_point t1, std::chrono::steady_clock::time_point t2) {
+    cout << "\r";
+
+    duration<double, std::milli> ms_double = t2 - t1;
+    std::cout << "[";
+    int pos = PROGRESS_WIDTH * progress;
+    for (int i = 0; i < PROGRESS_WIDTH; ++i) {
+        if (i < pos) std::cout << "=";
+        else if (i == pos) std::cout << ">";
+        else std::cout << " ";
+    }
+    std::cout << "] " << int(progress * 100.0) << "% : " << ms_double.count() << "ms" << " \r";
+    std::cout.flush();
+}
+
+__host__ inline float radians(float deg) {
+    return deg * (CUDART_PI_F / 180.0f);
+}
+
 int main(int argc, char** arcgv) {
     int tx = 8;
     int ty = 8;
@@ -99,9 +137,9 @@ int main(int argc, char** arcgv) {
     int numObjects, numLights;
     bool running = true;
     SDL_Event event;
-    float numSamples = 1000.0f;
 
     window.initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT);
+    SDL_SetRelativeMouseMode(SDL_TRUE);
 
     numObjects = 4;
     numLights = 4;
@@ -117,6 +155,12 @@ int main(int argc, char** arcgv) {
     gpuChk(cudaMallocManaged((void**)&(window.copied_origin), sizeof(V3)));
 
     float aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+    float yaw = -90.0f;
+    float pitch = 0.0f;
+    int lastX = SCREEN_WIDTH / 2;
+    int lastY = SCREEN_HEIGHT / 2;
+    bool cameraChanged = false;
+
     V3 u, v, w;
 
     V3 cam_origin = V3(0.0, 0.0, 0.5);
@@ -152,38 +196,46 @@ int main(int argc, char** arcgv) {
 
             if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {
-                case SDLK_w: cam_origin.z += 1; break;
-                case SDLK_s: cam_origin.z -= 1; break;
-                case SDLK_a: cam_origin.x -= 1; break;
-                case SDLK_d: cam_origin.x += 1; break;
+                case SDLK_w: cam_origin.z -= MOVE_SENS; break;
+                case SDLK_s: cam_origin.z += MOVE_SENS; break;
+                case SDLK_a: cam_origin.x -= MOVE_SENS; break;
+                case SDLK_d: cam_origin.x += MOVE_SENS; break;
+                case SDLK_q: cam_origin.y -= MOVE_SENS; break;
+                case SDLK_e: cam_origin.y += MOVE_SENS; break;
                 }
+                window.copied_origin = cam_origin;
+                cameraChanged = true;
+            }
+
+            if (event.type == SDL_MOUSEMOTION) {
+                float xoffset = event.motion.xrel * LOOK_SENS;
+                float yoffset = event.motion.yrel * LOOK_SENS;
+
+                yaw += xoffset;
+                pitch -= yoffset;
+
+                // clamp pitch to avoid flipping
+                if (pitch > 89.0f) pitch = 89.0f;
+                if (pitch < -89.0f) pitch = -89.0f;
+
+                // convert yaw/pitch to a direction vector
+                V3 direction;
+                direction.x = cosf(radians(yaw)) * cosf(radians(pitch));
+                direction.y = sinf(radians(pitch));
+                direction.z = sinf(radians(yaw)) * cosf(radians(pitch));
+                lookat = (cam_origin + direction).normalize();
+
+                cameraChanged = true;
             }
         }
-
-        cout << "\r";
 
         auto t1 = high_resolution_clock::now();
 
         Uint32* pixels = (Uint32*) malloc((SCREEN_HEIGHT * SCREEN_WIDTH) * sizeof(Uint32));
 
-        if (event.type == SDL_KEYDOWN) {
-            if (event.key.keysym.sym == SDLK_w) {
-                cam_origin.z += 1;
-            }
-            else if (event.key.keysym.sym == SDLK_a) {
-                cam_origin.x -= 1;
-            }
-            else if (event.key.keysym.sym == SDLK_d) {
-                cam_origin.x += 1;
-            }
-            else if (event.key.keysym.sym == SDLK_s) {
-                cam_origin.z -= 1;
-            }
-        }
-
-        if (window.repeat_samples < numSamples) {
+        if (window.repeat_samples < NUM_SAMPLES) {
             window.repeat_samples += 1;
-            updateDisplay<<<blocks, threads>>>(window.totals, window.devPixels, window.horizontal, window.vertical, window.bot_left, window.copied_origin, numSamples, NUM_BOUNCES, numObjects, window.objects, numLights, window.lights, devStates, window.repeat_samples, unsigned(rand()));
+            updateDisplay << <blocks, threads >> > (window.totals, window.devPixels, window.horizontal, window.vertical, window.bot_left, window.copied_origin, NUM_BOUNCES, numObjects, window.objects, numLights, window.lights, devStates, window.repeat_samples, unsigned(rand()));
             gpuChk(cudaDeviceSynchronize());
             gpuChk(cudaPeekAtLastError());
 
@@ -206,13 +258,21 @@ int main(int argc, char** arcgv) {
 
             auto t2 = high_resolution_clock::now();
 
-            // Getting number of milliseconds as an integer.
-            auto ms_int = duration_cast<milliseconds>(t2 - t1);
+            updateProgressBar(window.repeat_samples / (float)NUM_SAMPLES, t1, t2);
+        }
 
-            // Getting number of milliseconds as a double
-            duration<double, std::milli> ms_double = t2 - t1;
+        if (cameraChanged) {
+            // recompute camera basis once per frame
+            w = (cam_origin - lookat).normalize();
+            u = (up.cross(w)).normalize();
+            v = w.cross(u);
 
-            cout << window.repeat_samples << "/" << numSamples << " samples " << ms_double.count() << " ms";
+            window.bot_left = cam_origin - u * h_width - v * h_height - w;
+            window.horizontal = u * (2.0f * h_width);
+            window.vertical = v * (2.0f * h_height);
+
+            resetDisplay(window);
+            cameraChanged = false;
         }
 
         free(pixels);
