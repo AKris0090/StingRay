@@ -46,6 +46,15 @@ struct V3 {
 		return V3{ x / other.x, y / other.y, z / other.z };
 	}
 
+	__host__ __device__ V3& operator/=(const float o) noexcept {
+		if (o == 0.0) {
+			printf("ERROR: Division by 0 vector");
+			return *this;
+		}
+		x /= o; y /= o; z /= o;
+		return *this;
+	}
+
 	__host__ __device__ V3 operator+(float o) const noexcept {
 		return V3{ x + o, y + o, z + o };
 	}

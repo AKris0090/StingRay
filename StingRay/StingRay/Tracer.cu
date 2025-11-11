@@ -100,7 +100,7 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** li
 		}
 
 		if (!hit_anything) {
-			radiance += attenuation * V3(0.0f, 0.0f, 0.0f);
+			// add sky color here if necessary (radiance += attenuation * env_color)
 			break;
 		}
 
@@ -122,6 +122,16 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** li
 		}
 
 		radiance += attenuation * direct;
+		attenuation = attenuation * albedo;
+
+		// Russian roulette termination to keep paths efficient and unbiased
+		if (i > 3) {
+			float p = fmaxf(attenuation.x, fmaxf(attenuation.y, attenuation.z));
+			if (p <= 0.0f) break;
+			if (curand_uniform(localDevState) > p) break;
+			// renormalize throughput to account for survival probability
+			attenuation /= p;
+		}
 
 		cur_r = secondaryRay;
 	}

@@ -45,10 +45,10 @@ __device__ float clampRGB(float in) {
 // Setup CUDA resources in device memory only once
 __global__ void setup_kernel(Sphere** objects, AreaLight** lights, PBRMaterial** mats, int numLights, int numObjects) {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
-        PBRMaterial* metal = new PBRMaterial(V3(255.0f, 255.0f, 255.0f), 1.0f, 0.05, 0.0f, 0.0f, 0.0f);
+        PBRMaterial* metal = new PBRMaterial(V3(100.0f, 100.0f, 100.0f), 1.0f, 0.75f, 0.0f, 0.0f, 0.0f);
         PBRMaterial* metal2 = new PBRMaterial(V3(180.0f, 180.0f, 180.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-        PBRMaterial* red = new PBRMaterial(V3(255.0f, 0.0f, 0.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-        PBRMaterial* blue = new PBRMaterial(V3(0.0f, 0.0f, 255.0f), 0.0f, 1.0f, 0.0f, 0.0f, 10.0f);
+        PBRMaterial* red = new PBRMaterial(V3(255.0f, 140.0f, 0.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+        PBRMaterial* blue = new PBRMaterial(V3(186.0f, 85.0f, 211.0f), 0.0f, 1.0f, 0.0f, 0.0f, 10.0f);
 
         *(mats) = metal;
         *(mats + 1) = metal2;
@@ -57,6 +57,8 @@ __global__ void setup_kernel(Sphere** objects, AreaLight** lights, PBRMaterial**
 
         *(lights) = new AreaLight(Sphere(V3(1.0f, 1.5f, 2.0f), 0.15f), 9.0f);
         *(lights + 1) = new AreaLight(Sphere(V3(-1.0f, 1.5f, 2.0f), 0.15f), 9.0f);
+        *(lights + 2) = new AreaLight(Sphere(V3(1.0f, 1.5f, -2.0f), 0.15f), 9.0f);
+        *(lights + 3) = new AreaLight(Sphere(V3(-1.0f, 1.5f, -2.0f), 0.15f), 9.0f);
 
         *(objects) = new Sphere(V3(0.0, 0.0, -1), 0.5, mats[3]);
         *(objects + 1) = new Sphere(V3(0, -100.5, -1), 100, mats[2]);
@@ -102,7 +104,7 @@ int main(int argc, char** arcgv) {
     window.initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT);
 
     numObjects = 4;
-    numLights = 2;
+    numLights = 4;
 
     curandState* devStates;
     gpuChk(cudaMallocManaged((void**)&devStates, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(curandState)));
