@@ -27,6 +27,11 @@ struct V3 {
 		return V3{ -x, -y, -z };
 	}
 
+	__host__ __device__ V3& operator-=(const V3& other) noexcept {
+		x -= other.x; y -= other.y; z -= other.z;
+		return *this;
+	}
+
 	__host__ __device__ V3 operator*(const V3& other) const noexcept {
 		return V3{ x * other.x, y * other.y, z * other.z };
 	}

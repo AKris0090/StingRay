@@ -128,11 +128,11 @@ int main(int argc, char** arcgv) {
     int numObjects, numLights;
     bool running = true;
     SDL_Event event;
+    float lastFrameTime = 0.0f;
+    const Uint8* state = SDL_GetKeyboardState(NULL);
 
-    cudaStream_t computeStream, copyStream;
-    cudaStreamCreate(&computeStream);
-    cudaStreamCreate(&copyStream);
-    bool bufferReady[2] = { true, false };
+    float deltaTime = (SDL_GetTicks() - lastFrameTime) / 1000.0f;
+    lastFrameTime = SDL_GetTicks();
 
     window.initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT);
     SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -147,16 +147,12 @@ int main(int argc, char** arcgv) {
     gpuChk(cudaMalloc((void**)&(window.lights), numLights * sizeof(AreaLight*)));
     gpuChk(cudaMalloc((void**)&(window.mats), 4 * sizeof(PBRMaterial*)));
     gpuChk(cudaMalloc((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
-    gpuChk(cudaMalloc((void**)&(window.devPixels[0]), ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3))));
-    gpuChk(cudaMalloc((void**)&(window.devPixels[1]), ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3))));
+    gpuChk(cudaMalloc((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3))));
     gpuChk(cudaMallocManaged((void**)&(window.copied_origin), sizeof(V3)));
 
-    Uint8* copyTotals[2];
+    Uint8* copyTotals;
     size_t totalSize = (size_t)((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3);
-    gpuChk(cudaHostAlloc((void**)&copyTotals[0], totalSize, 0));
-    gpuChk(cudaHostAlloc((void**)&copyTotals[1], totalSize, 0));
-    int displayIndex = 0;
-    int computeIndex = 1;
+    gpuChk(cudaHostAlloc((void**)&copyTotals, totalSize, 0));
 
     Uint32* pixels;
     pixels = (Uint32*)malloc((SCREEN_HEIGHT * SCREEN_WIDTH) * sizeof(Uint32));
@@ -169,7 +165,6 @@ int main(int argc, char** arcgv) {
     gpuChk(cudaPeekAtLastError());
 
     window.copied_origin = cam.origin;
-
     window.texture = SDL_CreateTexture(window.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     while (running) {
@@ -182,47 +177,42 @@ int main(int argc, char** arcgv) {
 
                 cam.mouseMove(xoffset, yoffset);
             }
+        }
 
-            if (event.type == SDL_KEYDOWN) {
-                switch (event.key.keysym.sym) {
-                case SDLK_w: cam.origin.z -= MOVE_SENS; cam.lookat.z -= MOVE_SENS; break;
-                case SDLK_s: cam.origin.z += MOVE_SENS; cam.lookat.z += MOVE_SENS; break;
-                case SDLK_a: cam.origin.x -= MOVE_SENS; cam.lookat.x -= MOVE_SENS; break;
-                case SDLK_d: cam.origin.x += MOVE_SENS; cam.lookat.x += MOVE_SENS; break;
-                case SDLK_q: cam.origin.y -= MOVE_SENS; cam.lookat.y -= MOVE_SENS; break;
-                case SDLK_e: cam.origin.y += MOVE_SENS; cam.lookat.y += MOVE_SENS; break;
-                }
-                window.copied_origin = cam.origin;
-                cam.needUpdate = true;
-            }
+        V3 forward = (cam.lookat - cam.origin).normalize();
+        V3 right = forward.cross(cam.up).normalize();
+
+        bool write = false;
+
+        if (state[SDL_SCANCODE_W]) { cam.origin += forward * MOVE_SENS; write = true; }
+        if (state[SDL_SCANCODE_S]) { cam.origin -= forward * MOVE_SENS; write = true; }
+        if (state[SDL_SCANCODE_A]) { cam.origin -= right   * MOVE_SENS; write = true; }
+        if (state[SDL_SCANCODE_D]) { cam.origin += right   * MOVE_SENS; write = true; }
+        if (state[SDL_SCANCODE_Q]) { cam.origin -= cam.up  * MOVE_SENS; write = true; }
+        if (state[SDL_SCANCODE_E]) { cam.origin += cam.up  * MOVE_SENS; write = true; }
+
+        if (write) {
+            cam.lookat = cam.origin + cam.forward;
+            window.copied_origin = cam.origin;
+            cam.needUpdate = true;
         }
 
         auto t1 = high_resolution_clock::now();
 
         if (window.repeat_samples < NUM_SAMPLES) {
             window.repeat_samples += 1;
-            updateDisplay << <blocks, threads, 0, computeStream>> > (window.totals, window.devPixels[computeIndex], cam.horizontal, cam.vertical, cam.botLeft, window.copied_origin, NUM_BOUNCES, numObjects, window.objects, numLights, window.lights, devStates, window.repeat_samples, unsigned(rand()));
+            updateDisplay << <blocks, threads >> > (window.totals, window.devPixels, cam.horizontal, cam.vertical, cam.botLeft, window.copied_origin, NUM_BOUNCES, numObjects, window.objects, numLights, window.lights, devStates, window.repeat_samples, unsigned(rand()));
 
-            cudaMemcpyAsync(copyTotals[computeIndex], window.devPixels[computeIndex], (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3, cudaMemcpyDeviceToHost, copyStream);
-            bufferReady[computeIndex] = false;
-
-            if (!bufferReady[displayIndex]) {
-                cudaStreamQuery(copyStream);
-                bufferReady[displayIndex] = true;
+            cudaMemcpy(copyTotals, window.devPixels, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3, cudaMemcpyDeviceToHost);
+            
+            for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+                pixels[i] = SDL_MapRGB(window.surface->format, copyTotals[(i * 3)], copyTotals[(i * 3) + 1], copyTotals[(i * 3) + 2]);
             }
 
-            if (bufferReady[displayIndex]) {
-                for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-                    pixels[i] = SDL_MapRGB(window.surface->format, copyTotals[displayIndex][(i * 3)], copyTotals[displayIndex][(i * 3) + 1], copyTotals[displayIndex][(i * 3) + 2]);
-                }
-
-                std::swap(displayIndex, computeIndex);
-
-                SDL_UpdateTexture(window.texture, NULL, pixels, SCREEN_WIDTH * sizeof(Uint32));
-                SDL_RenderClear(window.renderer);
-                SDL_RenderCopyEx(window.renderer, window.texture, NULL, NULL, 0, NULL, SDL_FLIP_VERTICAL);
-                SDL_RenderPresent(window.renderer);
-            }
+            SDL_UpdateTexture(window.texture, NULL, pixels, SCREEN_WIDTH * sizeof(Uint32));
+            SDL_RenderClear(window.renderer);
+            SDL_RenderCopyEx(window.renderer, window.texture, NULL, NULL, 0, NULL, SDL_FLIP_VERTICAL);
+            SDL_RenderPresent(window.renderer);
 
             auto t2 = high_resolution_clock::now();
 
@@ -231,11 +221,6 @@ int main(int argc, char** arcgv) {
 
         if (cam.needUpdate) {
             // recompute camera basis once per frame
-            cudaStreamDestroy(computeStream);
-            cudaStreamDestroy(copyStream);
-            cudaStreamCreate(&computeStream);
-            cudaStreamCreate(&copyStream);
-
             cout << "need up" << endl;
             cam.updateCam();
             resetDisplay(window);

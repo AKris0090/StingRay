@@ -2,7 +2,7 @@
 #include "Vector.cuh"
 
 struct Camera {
-	V3 origin, lookat, up, botLeft, horizontal, vertical;
+	V3 origin, lookat, up, botLeft, horizontal, vertical, forward;
     float pitch, yaw, hWidth, hHeight;
     bool needUpdate;
 
@@ -39,24 +39,29 @@ struct Camera {
         yaw += deltaX;
         pitch -= deltaY;
 
+        if (pitch > 89.0f) pitch = 89.0f;
+        if (pitch < -89.0f) pitch = -89.0f;
+
         // convert yaw/pitch to a direction vector
         V3 direction;
         direction.x = cosf(radians(yaw)) * cosf(radians(pitch));
         direction.y = sinf(radians(pitch));
         direction.z = sinf(radians(yaw)) * cosf(radians(pitch));
-        lookat = (origin + direction).normalize();
+        forward = direction.normalize();
+
+        lookat = origin + forward;
 
         needUpdate = true;
     }
 
     void updateCam() {
-        V3 w = (origin - lookat).normalize();
+        V3 w = -forward.normalize();
         V3 u = (up.cross(w)).normalize();
         V3 v = w.cross(u);
 
         botLeft = origin - u * hWidth - v * hHeight - w;
         horizontal = u * (2.0f * hWidth);
-        vertical = v * (2.0f * hHeight);
+        vertical   = v * (2.0f * hHeight);
         needUpdate = false;
     }
 };
