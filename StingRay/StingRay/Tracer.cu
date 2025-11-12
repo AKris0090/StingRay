@@ -2,13 +2,15 @@
 #include <iostream>
 using namespace std;
 
-__device__ V3 Tracer::calculate_shadow_ray(Ray shadowRay, Sphere** objects, AreaLight a, hitReg primHit, int numObjects) {
+constexpr float PI = 3.14159f;
+
+__device__ V3 Tracer::calculate_shadow_ray(Ray shadowRay, Sphere** objects, AreaLight a, Ray::hitReg& primHit, int numObjects) {
 	// check if the ray hits anything
 	bool hit_anything = false;
 	float closest_so_far = FLT_MAX;
 	for (int k = 0; k < numObjects; k++) {
 		Sphere current = *(*(objects + k));
-		hitReg temp_rec = shadowRay.intersect(current.origin, 0.00001f, closest_so_far, current.radius);
+		Ray::hitReg temp_rec = current.hit(shadowRay, 0.00001f, closest_so_far);
 		if (temp_rec.hit) {
 			hit_anything = true;
 			closest_so_far = temp_rec.time;
@@ -82,13 +84,14 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** li
 	for (int i = 0; i < max_bounces; i++) {
 
 		// Check if the primary ray hits anything
-		hitReg hit;
+		Ray::hitReg hit;
+		Ray::hitReg temp_rec;
 		bool hit_anything = false;
 		float closest_so_far = FLT_MAX;
 		PBRMaterial* hitMaterial = nullptr;
 		for (int j = 0; j < numObjects; j++) {
 			Sphere current = *(*(objects + j));
-			hitReg temp_rec = cur_r.intersect(current.origin, 0.00001f, closest_so_far, current.radius);
+			temp_rec = current.hit(cur_r, 0.00001f, closest_so_far);
 			if (temp_rec.hit) {
 				hitMaterial = current.mat;
 				hit_anything = true;

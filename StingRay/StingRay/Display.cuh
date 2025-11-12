@@ -2,12 +2,12 @@
 #include "Tracer.cuh"
 #include <SDL.h>
 #include <chrono>
-#include "Sphere.cuh"
 #include "PBRMat.cuh"
 #include "Vector.cuh"
 #include "Ray.cuh"
 #include "cuda.h"
 #include "cuda_runtime.h"
+#include "Sphere.cuh"
 #include <iostream>
 
 using namespace std;
@@ -23,14 +23,11 @@ public:
 	V3* totals;
 	Uint8* devPixels;
 
-	float cam_aspect_width = 0;
-	float cam_aspect_height = 0;
 	V3 bot_left;
 	V3 horizontal;
 	V3 vertical;
 	V3 copied_origin;
 	V3 center_one;
-	float radius_one = 0;
 	int repeat_samples = 0;
 
 	void initDisplay(int screen_width, int screen_height);

@@ -5,8 +5,6 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
-constexpr float PI = 3.14159f;
-
 class PBRMaterial {
 public:
 	V3 base_color;
@@ -22,6 +20,5 @@ public:
 	
 
 	__device__ V3 random_in_hemisphere(const V3& normal, curandState* localDevState);
-	__device__ V3 reflect(Ray& in_dir, hitReg& hR);
-	__device__ V3 hitColor(Ray& in_ray, hitReg& hR, Ray& out_ray, curandState* localDevState);
+	__device__ V3 hitColor(Ray& in_ray, Ray::hitReg& hR, Ray& out_ray, curandState* localDevState);
 };

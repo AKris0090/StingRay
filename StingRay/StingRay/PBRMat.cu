@@ -1,11 +1,6 @@
 #include "PBRMat.cuh"
 
-// Perfect reflection
-__device__ V3 PBRMaterial::reflect(Ray& in_dir, hitReg& hR) {
-	V3 normal_dir = in_dir.direction.normalize();
-	V3 reflected = normal_dir - (hR.normal_vector * (2 * normal_dir.dot(hR.normal_vector)));
-	return reflected.normalize();
-}
+constexpr float PI = 3.14159f;
 
 // diffuse (imperfect) scattering
 __device__ V3 PBRMaterial::random_in_hemisphere(const V3& normal, curandState* localDevState) {
@@ -34,11 +29,11 @@ __device__ V3 PBRMaterial::random_in_hemisphere(const V3& normal, curandState* l
 	return (tangent * local.x + bitangent * local.y + normal * local.z).normalize();
 }
 
-__device__ V3 PBRMaterial::hitColor(Ray& in_ray, hitReg& hR, Ray& out_ray, curandState* localDevState){
+__device__ V3 PBRMaterial::hitColor(Ray& in_ray, Ray::hitReg& hR, Ray& out_ray, curandState* localDevState){
 	float rand = curand_uniform(localDevState);
 	if (rand < metallic) {
 		// specular reflection
-		V3 reflectedDir = reflect(in_ray, hR);
+		V3 reflectedDir = in_ray.reflect(hR);
 		out_ray = Ray(hR.hitPoint + hR.normal_vector * 1e-4f, reflectedDir);
 	}
 	else {

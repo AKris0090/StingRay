@@ -1,6 +1,7 @@
 #include "Display.cuh"
 #include "SDL.h"
 #include "Camera.cuh"
+#include "Sphere.cuh"
 #include "device_launch_parameters.h"
 #include <random>
 #include <curand.h>
@@ -154,9 +155,7 @@ int main(int argc, char** arcgv) {
     size_t totalSize = (size_t)((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3);
     gpuChk(cudaHostAlloc((void**)&copyTotals, totalSize, 0));
 
-    Uint32* pixels;
-    pixels = (Uint32*)malloc((SCREEN_HEIGHT * SCREEN_WIDTH) * sizeof(Uint32));
-
+    std::vector<Uint32> pixels(SCREEN_WIDTH * SCREEN_HEIGHT);
     Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, CAM_VFOV_DEG);
 
     // setup seeds
@@ -202,6 +201,8 @@ int main(int argc, char** arcgv) {
         if (window.repeat_samples < NUM_SAMPLES) {
             window.repeat_samples += 1;
             updateDisplay << <blocks, threads >> > (window.totals, window.devPixels, cam.horizontal, cam.vertical, cam.botLeft, window.copied_origin, NUM_BOUNCES, numObjects, window.objects, numLights, window.lights, devStates, window.repeat_samples, unsigned(rand()));
+            gpuChk(cudaDeviceSynchronize());
+            gpuChk(cudaPeekAtLastError());
 
             cudaMemcpy(copyTotals, window.devPixels, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3, cudaMemcpyDeviceToHost);
             
@@ -209,7 +210,7 @@ int main(int argc, char** arcgv) {
                 pixels[i] = SDL_MapRGB(window.surface->format, copyTotals[(i * 3)], copyTotals[(i * 3) + 1], copyTotals[(i * 3) + 2]);
             }
 
-            SDL_UpdateTexture(window.texture, NULL, pixels, SCREEN_WIDTH * sizeof(Uint32));
+            SDL_UpdateTexture(window.texture, NULL, pixels.data(), SCREEN_WIDTH * sizeof(Uint32));
             SDL_RenderClear(window.renderer);
             SDL_RenderCopyEx(window.renderer, window.texture, NULL, NULL, 0, NULL, SDL_FLIP_VERTICAL);
             SDL_RenderPresent(window.renderer);
@@ -231,7 +232,6 @@ int main(int argc, char** arcgv) {
     SDL_DestroyWindow(window.window);
     cudaFree(window.totals);
     cudaFree(devStates);
-    free(pixels);
 
     cudaFree(window.lights);
     cudaFree(window.objects);

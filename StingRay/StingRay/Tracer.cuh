@@ -1,10 +1,8 @@
 #pragma once
 #include <vector>
-#include "PBRMat.cuh"
-#include "Sphere.cuh"
 #include "AreaLight.cuh"
 #include "device_launch_parameters.h"
-#include "Triangle.cuh"
+#include "PBRMat.cuh"
 
 using namespace std;
 
@@ -13,6 +11,6 @@ public:
 	Ray pRay;
 
 	// Should return a color that corresponds to the traced ray
-	__device__ static V3 calculate_shadow_ray(Ray shadowRay, Sphere** objects, AreaLight a, hitReg primHit, int numObjects);
+	__device__ static V3 calculate_shadow_ray(Ray shadowRay, Sphere** objects, AreaLight a, Ray::hitReg& primHit, int numObjects);
 	__device__ static V3 trace_ray(const Ray& ray, Sphere** objects, AreaLight** lights, int max_bounces, int numObjects, int numLights, curandState* localDevState);
 };
