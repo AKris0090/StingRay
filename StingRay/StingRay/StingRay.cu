@@ -72,21 +72,13 @@ __global__ void setup_kernel(Sphere** objects, AreaLight** lights, PBRMaterial**
 }
 
 __host__ void resetDisplay(DisplayWindow& window) {
-    gpuChk(cudaDeviceSynchronize());
-
-    cudaFree(window.totals);
-    cudaFree(window.devPixels);
-
-    gpuChk(cudaMallocManaged((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
-    gpuChk(cudaMallocManaged((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
+    cudaMemset(window.totals, 0, ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3)));
+    cudaMemset(window.devPixels, 0, ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3)));
 
     window.repeat_samples = 0;
-
-    gpuChk(cudaDeviceSynchronize());
-    gpuChk(cudaPeekAtLastError());
 }
 
-__global__ void updateDisplay(V3* totals, V3* devPixels, V3 hor, V3 ver, V3 botL, V3 copOrigin, const int numBounces, int numObjects, Sphere** objects, int numLights, AreaLight** lights, curandState* devStates, int repeatSamples, unsigned long seed) {
+__global__ void updateDisplay(V3* totals, Uint8* devPixels, V3 hor, V3 ver, V3 botL, V3 copOrigin, const int numBounces, int numObjects, Sphere** objects, int numLights, AreaLight** lights, curandState* devStates, int repeatSamples, unsigned long seed) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
     int index = i + (j * SCREEN_WIDTH);
@@ -104,7 +96,9 @@ __global__ void updateDisplay(V3* totals, V3* devPixels, V3 hor, V3 ver, V3 botL
     totals[index].x += clampRGB(ret_color.x);
     totals[index].y += clampRGB(ret_color.y);
     totals[index].z += clampRGB(ret_color.z);
-    devPixels[index] = totals[index] / repeatSamples;
+    devPixels[(index * 3)] = totals[index].x / repeatSamples;
+    devPixels[(index * 3) + 1] = totals[index].y / repeatSamples;
+    devPixels[(index * 3) + 2] = totals[index].z / repeatSamples;
 }
 
 void updateProgressBar(float progress, std::chrono::steady_clock::time_point t1, std::chrono::steady_clock::time_point t2) {
@@ -145,20 +139,23 @@ int main(int argc, char** arcgv) {
     numLights = 4;
 
     curandState* devStates;
-    gpuChk(cudaMallocManaged((void**)&devStates, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(curandState)));
+    gpuChk(cudaMalloc((void**)&devStates, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(curandState)));
 
-    gpuChk(cudaMallocManaged((void**)&(window.objects), numObjects * sizeof(Sphere*)));
-    gpuChk(cudaMallocManaged((void**)&(window.lights), numLights * sizeof(AreaLight*)));
-    gpuChk(cudaMallocManaged((void**)&(window.mats), 4 * sizeof(PBRMaterial*)));
-    gpuChk(cudaMallocManaged((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
-    gpuChk(cudaMallocManaged((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
+    gpuChk(cudaMalloc((void**)&(window.objects), numObjects * sizeof(Sphere*)));
+    gpuChk(cudaMalloc((void**)&(window.lights), numLights * sizeof(AreaLight*)));
+    gpuChk(cudaMalloc((void**)&(window.mats), 4 * sizeof(PBRMaterial*)));
+    gpuChk(cudaMalloc((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
+    gpuChk(cudaMalloc((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3))));
     gpuChk(cudaMallocManaged((void**)&(window.copied_origin), sizeof(V3)));
 
+    Uint8* copyTotals;
+    gpuChk(cudaHostAlloc((void**)&(copyTotals), (size_t)((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3), 0));
+
+    Uint32* pixels;
+    pixels = (Uint32*)malloc((SCREEN_HEIGHT * SCREEN_WIDTH) * sizeof(Uint32));
     float aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
     float yaw = -90.0f;
     float pitch = 0.0f;
-    int lastX = SCREEN_WIDTH / 2;
-    int lastY = SCREEN_HEIGHT / 2;
     bool cameraChanged = false;
 
     V3 u, v, w;
@@ -170,8 +167,6 @@ int main(int argc, char** arcgv) {
     float theta = CAM_VFOV_DEG * (CUDART_PI_F / 180.0f);
     float h_height = tanf(theta / 2.0f);
     float h_width = aspect * h_height;
-
-    V3* copyTotals;
 
     w = (cam_origin - lookat).normalize();
     u = (up.cross(w)).normalize();
@@ -194,29 +189,12 @@ int main(int argc, char** arcgv) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
 
-            if (event.type == SDL_KEYDOWN) {
-                switch (event.key.keysym.sym) {
-                case SDLK_w: cam_origin.z -= MOVE_SENS; break;
-                case SDLK_s: cam_origin.z += MOVE_SENS; break;
-                case SDLK_a: cam_origin.x -= MOVE_SENS; break;
-                case SDLK_d: cam_origin.x += MOVE_SENS; break;
-                case SDLK_q: cam_origin.y -= MOVE_SENS; break;
-                case SDLK_e: cam_origin.y += MOVE_SENS; break;
-                }
-                window.copied_origin = cam_origin;
-                cameraChanged = true;
-            }
-
             if (event.type == SDL_MOUSEMOTION) {
                 float xoffset = event.motion.xrel * LOOK_SENS;
                 float yoffset = event.motion.yrel * LOOK_SENS;
 
                 yaw += xoffset;
                 pitch -= yoffset;
-
-                // clamp pitch to avoid flipping
-                if (pitch > 89.0f) pitch = 89.0f;
-                if (pitch < -89.0f) pitch = -89.0f;
 
                 // convert yaw/pitch to a direction vector
                 V3 direction;
@@ -227,30 +205,39 @@ int main(int argc, char** arcgv) {
 
                 cameraChanged = true;
             }
+
+            if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.sym) {
+                case SDLK_w: cam_origin.z -= MOVE_SENS; lookat.z -= MOVE_SENS; break;
+                case SDLK_s: cam_origin.z += MOVE_SENS; lookat.z += MOVE_SENS; break;
+                case SDLK_a: cam_origin.x -= MOVE_SENS; lookat.x -= MOVE_SENS; break;
+                case SDLK_d: cam_origin.x += MOVE_SENS; lookat.x += MOVE_SENS; break;
+                case SDLK_q: cam_origin.y -= MOVE_SENS; lookat.y -= MOVE_SENS; break;
+                case SDLK_e: cam_origin.y += MOVE_SENS; lookat.y += MOVE_SENS; break;
+                }
+                window.copied_origin = cam_origin;
+                cameraChanged = true;
+            }
         }
 
         auto t1 = high_resolution_clock::now();
 
-        Uint32* pixels = (Uint32*) malloc((SCREEN_HEIGHT * SCREEN_WIDTH) * sizeof(Uint32));
-
         if (window.repeat_samples < NUM_SAMPLES) {
             window.repeat_samples += 1;
             updateDisplay << <blocks, threads >> > (window.totals, window.devPixels, window.horizontal, window.vertical, window.bot_left, window.copied_origin, NUM_BOUNCES, numObjects, window.objects, numLights, window.lights, devStates, window.repeat_samples, unsigned(rand()));
+
+            cudaMemcpyAsync(copyTotals, window.devPixels, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3, cudaMemcpyDeviceToHost);
+
             gpuChk(cudaDeviceSynchronize());
             gpuChk(cudaPeekAtLastError());
-
-            copyTotals = (V3*)malloc((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3));
-
-            gpuChk(cudaMemcpy(copyTotals, window.devPixels, ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3)), cudaMemcpyDeviceToHost));
 
             for (int i = 0; i < SCREEN_WIDTH; i++) {
                 for (int j = 0; j < SCREEN_HEIGHT; j++) {
                     int index = i + (j * SCREEN_WIDTH);
-                    pixels[index] = SDL_MapRGB(window.surface->format, (Uint8)(copyTotals[index].x), (Uint8)(copyTotals[index].y), (Uint8)(copyTotals[index].z));
+                    pixels[index] = SDL_MapRGB(window.surface->format, copyTotals[(index * 3)], copyTotals[(index * 3) + 1], copyTotals[(index * 3) + 2]);
                 }
             }
 
-            free(copyTotals);
             SDL_UpdateTexture(window.texture, NULL, pixels, SCREEN_WIDTH * sizeof(Uint32));
             SDL_RenderClear(window.renderer);
             SDL_RenderCopyEx(window.renderer, window.texture, NULL, NULL, 0, NULL, SDL_FLIP_VERTICAL);
@@ -274,14 +261,13 @@ int main(int argc, char** arcgv) {
             resetDisplay(window);
             cameraChanged = false;
         }
-
-        free(pixels);
     }
     SDL_DestroyRenderer(window.renderer);
     SDL_DestroyTexture(window.texture);
     SDL_DestroyWindow(window.window);
     cudaFree(window.totals);
     cudaFree(devStates);
+    free(pixels);
 
     cudaFree(window.lights);
     cudaFree(window.objects);

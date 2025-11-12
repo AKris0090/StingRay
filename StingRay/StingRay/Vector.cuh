@@ -3,8 +3,6 @@
 #include <cstdio>
 #include "device_launch_parameters.h"
 
-constexpr float PI = 3.14159f;
-
 struct V3 {
 	float x, y, z;
 

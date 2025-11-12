@@ -21,7 +21,7 @@ public:
 	SDL_Texture* texture;
 	SDL_Surface* surface;
 	V3* totals;
-	V3* devPixels;
+	Uint8* devPixels;
 
 	float cam_aspect_width = 0;
 	float cam_aspect_height = 0;

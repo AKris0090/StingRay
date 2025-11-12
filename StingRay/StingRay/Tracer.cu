@@ -22,7 +22,7 @@ __device__ V3 Tracer::calculate_shadow_ray(Ray shadowRay, Sphere** objects, Area
 }
 
 // normal distribution function
-__device__ float D_GGX(float ndoth, float roughness) {
+__device__ float dGGX(float ndoth, float roughness) {
 	float a = roughness * roughness;
 	float a2 = a * a;
 	float denom = (ndoth * ndoth) * (a2 - 1.0f) + 1.0f;
@@ -30,23 +30,23 @@ __device__ float D_GGX(float ndoth, float roughness) {
 }
 
 // geometry visibility function (self-shadowing, microfacets)
-__device__ float G_SchlickGGX(float ndotv, float roughness) {
+__device__ float gSchlickGGX(float ndotv, float roughness) {
 	float r = (roughness + 1.0f);
 	float k = (r * r) / 8.0f;
 	return ndotv / (ndotv * (1.0f - k) + k);
 }
 
-__device__ float G_Smith(float ndotv, float ndotl, float roughness) {
-	return G_SchlickGGX(ndotv, roughness) * G_SchlickGGX(ndotl, roughness);
+__device__ float gSmith(float ndotv, float ndotl, float roughness) {
+	return gSchlickGGX(ndotv, roughness) * gSchlickGGX(ndotl, roughness);
 }
 
 // fresnel approximation
-__device__ V3 F_Schlick(float cosTheta, const V3& F0) {
+__device__ V3 fSchlick(float cosTheta, const V3& F0) {
 	return F0 + (V3(1.0f) - F0) * powf(1.0f - cosTheta, 5.0f);
 }
 
 // cook-torrence BRDF
-__device__ V3 Cook_Torrence(const V3& normal, const V3& view, const V3& light, const PBRMaterial* mat) {
+__device__ V3 cookTorrence(const V3& normal, const V3& view, const V3& light, const PBRMaterial* mat) {
 	V3 half = (view + light).normalize();
 
 	float ndotl = fmaxf(normal.dot(light), 0.0f);
@@ -59,9 +59,9 @@ __device__ V3 Cook_Torrence(const V3& normal, const V3& view, const V3& light, c
 	V3 F0 = V3(0.04f);
 	F0 = F0 * (1.0f - mat->metallic) + albedo * mat->metallic;
 
-	float normalDist = D_GGX(ndoth, mat->roughness);
-	float geom = G_Smith(ndotv, ndotl, mat->roughness);
-	V3 F = F_Schlick(vdoth, F0);
+	float normalDist = dGGX(ndoth, mat->roughness);
+	float geom = gSmith(ndotv, ndotl, mat->roughness);
+	V3 F = fSchlick(vdoth, F0);
 
 	V3 numerator = F * normalDist * geom;
 	float denominator = 4.0f * ndotv * ndotl + 1e-4f;
@@ -78,7 +78,6 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** li
 	Ray cur_r = ray;
 	V3 radiance(0.0f);
 	V3 attenuation(1.0f);
-	PBRMaterial* prevMat = nullptr;
 	// iterative tracer (since no recursion on GPU!!!)
 	for (int i = 0; i < max_bounces; i++) {
 
@@ -118,7 +117,7 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** li
 
 			Ray shadowRay = Ray(hit.hitPoint + hit.normal_vector * 1e-4f, shadowSampleDir);
 
-			direct += Cook_Torrence(hit.normal_vector, -cur_r.direction, lightRay, hitMaterial) * calculate_shadow_ray(shadowRay, objects, l, hit, numObjects);
+			direct += cookTorrence(hit.normal_vector, -cur_r.direction, lightRay, hitMaterial) * calculate_shadow_ray(shadowRay, objects, l, hit, numObjects);
 		}
 
 		radiance += attenuation * direct;

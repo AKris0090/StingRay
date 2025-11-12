@@ -159,6 +159,7 @@
       <Include>
       </Include>
       <CodeGeneration>compute_86,sm_86</CodeGeneration>
+      <FastMath>true</FastMath>
     </CudaCompile>
     <CudaLink>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>

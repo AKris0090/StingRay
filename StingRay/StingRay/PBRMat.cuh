@@ -5,6 +5,8 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
+constexpr float PI = 3.14159f;
+
 class PBRMaterial {
 public:
 	V3 base_color;
