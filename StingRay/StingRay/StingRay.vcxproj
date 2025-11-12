@@ -194,6 +194,7 @@
     <CudaCompile Include="Vector.cuh" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Camera.cuh" />
     <ClInclude Include="Triangle.cuh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

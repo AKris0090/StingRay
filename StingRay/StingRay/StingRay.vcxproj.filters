@@ -37,6 +37,9 @@
     <Filter Include="Source Files\Triangle">
       <UniqueIdentifier>{b26895a1-de0e-453d-882a-f2ee07d90dd5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Camera">
+      <UniqueIdentifier>{540b2542-8e42-4b0f-9839-acbceb529805}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="StingRay.cu">
@@ -79,6 +82,9 @@
   <ItemGroup>
     <ClInclude Include="Triangle.cuh">
       <Filter>Source Files\Triangle</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.cuh">
+      <Filter>Source Files\Camera</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
