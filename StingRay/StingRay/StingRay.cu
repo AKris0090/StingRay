@@ -1,12 +1,15 @@
 #include "Display.cuh"
 #include "SDL.h"
 #include "Camera.cuh"
-#include "Sphere.cuh"
+#include "SceneObject.cuh"
 #include "device_launch_parameters.h"
 #include <random>
 #include <curand.h>
 #include <curand_kernel.h>
 #include <math_constants.h>
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "tiny_obj_loader.h"
 
 constexpr int SCREEN_WIDTH = 1200;
 constexpr int SCREEN_HEIGHT = 600;
@@ -48,28 +51,122 @@ __device__ float clampRGB(float in) {
     }
 }
 
-// Setup CUDA resources in device memory only once
-__global__ void setup_kernel(Sphere** objects, AreaLight** lights, PBRMaterial** mats, int numLights, int numObjects) {
-    if (threadIdx.x == 0 && blockIdx.x == 0) {
-        PBRMaterial* metal = new PBRMaterial(V3(100.0f, 100.0f, 100.0f), 1.0f, 0.75f, 0.0f, 0.0f, 0.0f);
-        PBRMaterial* metal2 = new PBRMaterial(V3(180.0f, 180.0f, 180.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-        PBRMaterial* red = new PBRMaterial(V3(255.0f, 140.0f, 0.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-        PBRMaterial* blue = new PBRMaterial(V3(186.0f, 85.0f, 211.0f), 0.0f, 1.0f, 0.0f, 0.0f, 10.0f);
+void setupObjectsHost(vector<SceneObject*>& hostObjects, vector<PBRMaterial*>& hostMaterials, vector<AreaLight*>& hostLights) {
+    AreaLight* l1 = new AreaLight(Sphere(V3(1.0f, 1.5f, 2.0f), 0.15f), 9.0f);
+    AreaLight* l2 = new AreaLight(Sphere(V3(-1.0f, 1.5f, 2.0f), 0.15f), 9.0f);
+    AreaLight* l3 = new AreaLight(Sphere(V3(1.0f, 1.5f, -2.0f), 0.15f), 9.0f);
+    AreaLight* l4 = new AreaLight(Sphere(V3(-1.0f, 1.5f, -2.0f), 0.15f), 9.0f);
+    hostLights.push_back(l1);
+    hostLights.push_back(l2);
+    hostLights.push_back(l3);
+    hostLights.push_back(l4);
 
-        *(mats) = metal;
-        *(mats + 1) = metal2;
-        *(mats + 2) = red;
-        *(mats + 3) = blue;
+    PBRMaterial* metal = new PBRMaterial(V3(100.0f, 100.0f, 100.0f), 1.0f, 0.75f, 0.0f, 0.0f, 0.0f);
+    PBRMaterial* metal2 = new PBRMaterial(V3(180.0f, 180.0f, 180.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+    PBRMaterial* red = new PBRMaterial(V3(255.0f, 140.0f, 0.0f), 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+    PBRMaterial* blue = new PBRMaterial(V3(186.0f, 85.0f, 211.0f), 0.0f, 1.0f, 0.0f, 0.0f, 10.0f);
+    hostMaterials.push_back(metal);
+    hostMaterials.push_back(metal2);
+    hostMaterials.push_back(red);
+    hostMaterials.push_back(blue);
 
-        *(lights) = new AreaLight(Sphere(V3(1.0f, 1.5f, 2.0f), 0.15f), 9.0f);
-        *(lights + 1) = new AreaLight(Sphere(V3(-1.0f, 1.5f, 2.0f), 0.15f), 9.0f);
-        *(lights + 2) = new AreaLight(Sphere(V3(1.0f, 1.5f, -2.0f), 0.15f), 9.0f);
-        *(lights + 3) = new AreaLight(Sphere(V3(-1.0f, 1.5f, -2.0f), 0.15f), 9.0f);
+    Sphere* s2 = new Sphere(V3(0, -100.5, -1), 100);
+    s2->base.type = SPHERE;
+    s2->base.matIdx = 2;
 
-        *(objects) = new Sphere(V3(0.0, 0.0, -1), 0.5, mats[3]);
-        *(objects + 1) = new Sphere(V3(0, -100.5, -1), 100, mats[2]);
-        *(objects + 2) = new Sphere(V3(1, 0, -1), 0.5, mats[0]);
-        *(objects + 3) = new Sphere(V3(-1, 0, -1), 0.5, mats[1]);
+    hostObjects.push_back((SceneObject*)s2);
+}
+
+void setupObjectsDevice(vector<SceneObject*>& hostObjects, vector<PBRMaterial*>& hostMaterials, vector<AreaLight*>& hostLights, DisplayWindow& window) {
+    gpuChk(cudaMalloc((void**) & window.objects, hostObjects.size() * sizeof(SceneObject*)));
+
+    gpuChk(cudaMalloc((void**) &window.mats, hostMaterials.size() * sizeof(PBRMaterial*)));
+
+    gpuChk(cudaMalloc((void**) &window.lights, hostLights.size() * sizeof(AreaLight*)));
+
+    for (int i = 0; i < (int)hostMaterials.size(); i++) {
+        PBRMaterial* devMatPtr = nullptr;
+        gpuChk(cudaMalloc(&devMatPtr, sizeof(PBRMaterial)));
+        gpuChk(cudaMemcpy(devMatPtr, hostMaterials[i], sizeof(PBRMaterial), cudaMemcpyHostToDevice));
+        PBRMaterial* tmp = devMatPtr;
+        gpuChk(cudaMemcpy(window.mats + i, &tmp, sizeof(PBRMaterial*), cudaMemcpyHostToDevice));
+    }
+
+    for (int i = 0; i < hostObjects.size(); i++) {
+        SceneObject* devPtr;
+        size_t size = 0;
+
+        PBRMaterial* devMatPtr = nullptr;
+        gpuChk(cudaMemcpy(&devMatPtr, window.mats + hostObjects[i]->matIdx, sizeof(PBRMaterial*), cudaMemcpyDeviceToHost));
+        hostObjects[i]->mat = devMatPtr;
+
+        if (hostObjects[i]->type == SPHERE) {
+            size = sizeof(Sphere);
+        } else if (hostObjects[i]->type == TRIANGLE) {
+            size = sizeof(Triangle);
+        }
+
+        gpuChk(cudaMalloc(&devPtr, size));
+        gpuChk(cudaMemcpy(devPtr, hostObjects[i], size, cudaMemcpyHostToDevice));
+        gpuChk(cudaMemcpy(window.objects + i, &devPtr, sizeof(SceneObject*), cudaMemcpyHostToDevice));
+    }
+
+    for (int i = 0; i < hostLights.size(); i++) {
+        AreaLight* devLight;
+
+        gpuChk(cudaMalloc(&devLight, sizeof(AreaLight)));
+        gpuChk(cudaMemcpy(devLight, hostLights[i], sizeof(AreaLight), cudaMemcpyHostToDevice));
+        gpuChk(cudaMemcpy(window.lights + i, &devLight, sizeof(AreaLight*), cudaMemcpyHostToDevice));
+    }
+}
+
+void loadModel(string filepath, vector<SceneObject*>& hostObjects) {
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    string mtlPath = "./";
+
+    std::string err;
+
+    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, filepath.c_str(), mtlPath.c_str());
+    if (!err.empty()) {
+        std::cerr << err << std::endl;
+    }
+
+    if (!ret) {
+        exit(1);
+    }
+
+    // Loop over shapes
+    for (size_t s = 0; s < shapes.size(); s++) {
+        // Loop over faces(polygon)
+        size_t index_offset = 0;
+        for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+            size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
+
+            tinyobj::index_t i1 = shapes[s].mesh.indices[index_offset + 0];
+            tinyobj::index_t i2 = shapes[s].mesh.indices[index_offset + 1];
+            tinyobj::index_t i3 = shapes[s].mesh.indices[index_offset + 2];
+
+            auto fetch = [&](tinyobj::index_t idx) {
+                return V3(
+                    attrib.vertices[3 * idx.vertex_index + 0],
+                    attrib.vertices[3 * idx.vertex_index + 1],
+                    attrib.vertices[3 * idx.vertex_index + 2]
+                );
+                };
+
+            V3 v1 = fetch(i1);
+            V3 v2 = fetch(i2);
+            V3 v3 = fetch(i3);
+
+            Triangle* t = new Triangle(v1, v2, v3);
+            t->base.type = TRIANGLE;
+            t->base.matIdx = 1;
+            hostObjects.push_back((SceneObject*)t);
+
+            index_offset += fv;
+        }
     }
 }
 
@@ -80,7 +177,7 @@ __host__ void resetDisplay(DisplayWindow& window) {
     window.repeat_samples = 0;
 }
 
-__global__ void updateDisplay(V3* totals, Uint8* devPixels, V3 hor, V3 ver, V3 botL, V3 copOrigin, const int numBounces, int numObjects, Sphere** objects, int numLights, AreaLight** lights, curandState* devStates, int repeatSamples, unsigned long seed) {
+__global__ void updateDisplay(V3* totals, Uint8* devPixels, V3 hor, V3 ver, V3 botL, V3 copOrigin, const int numBounces, int numObjects, SceneObject** objects, int numLights, AreaLight** lights, curandState* devStates, int repeatSamples, unsigned long seed) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
     int index = i + (j * SCREEN_WIDTH);
@@ -138,15 +235,8 @@ int main(int argc, char** arcgv) {
     window.initDisplay(SCREEN_WIDTH, SCREEN_HEIGHT);
     SDL_SetRelativeMouseMode(SDL_TRUE);
 
-    numObjects = 4;
-    numLights = 4;
-
     curandState* devStates;
     gpuChk(cudaMalloc((void**)&devStates, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(curandState)));
-
-    gpuChk(cudaMalloc((void**)&(window.objects), numObjects * sizeof(Sphere*)));
-    gpuChk(cudaMalloc((void**)&(window.lights), numLights * sizeof(AreaLight*)));
-    gpuChk(cudaMalloc((void**)&(window.mats), 4 * sizeof(PBRMaterial*)));
     gpuChk(cudaMalloc((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
     gpuChk(cudaMalloc((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3))));
     gpuChk(cudaMallocManaged((void**)&(window.copied_origin), sizeof(V3)));
@@ -158,10 +248,12 @@ int main(int argc, char** arcgv) {
     std::vector<Uint32> pixels(SCREEN_WIDTH * SCREEN_HEIGHT);
     Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, CAM_VFOV_DEG);
 
-    // setup seeds
-    setup_kernel<<<1, 1>>>(window.objects, window.lights, window.mats, numLights, numObjects);
-    gpuChk(cudaDeviceSynchronize());
-    gpuChk(cudaPeekAtLastError());
+    vector<SceneObject*> hostObjects;
+    vector<PBRMaterial*> hostMaterials;
+    vector<AreaLight*> hostLights;
+    setupObjectsHost(hostObjects, hostMaterials, hostLights);
+    loadModel("./objects/fox.obj", hostObjects);
+    setupObjectsDevice(hostObjects, hostMaterials, hostLights, window);
 
     window.copied_origin = cam.origin;
     window.texture = SDL_CreateTexture(window.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -200,7 +292,7 @@ int main(int argc, char** arcgv) {
 
         if (window.repeat_samples < NUM_SAMPLES) {
             window.repeat_samples += 1;
-            updateDisplay << <blocks, threads >> > (window.totals, window.devPixels, cam.horizontal, cam.vertical, cam.botLeft, window.copied_origin, NUM_BOUNCES, numObjects, window.objects, numLights, window.lights, devStates, window.repeat_samples, unsigned(rand()));
+            updateDisplay << <blocks, threads >> > (window.totals, window.devPixels, cam.horizontal, cam.vertical, cam.botLeft, window.copied_origin, NUM_BOUNCES, hostObjects.size(), window.objects, hostLights.size(), window.lights, devStates, window.repeat_samples, unsigned(rand()));
             gpuChk(cudaDeviceSynchronize());
             gpuChk(cudaPeekAtLastError());
 
@@ -221,8 +313,7 @@ int main(int argc, char** arcgv) {
         }
 
         if (cam.needUpdate) {
-            // recompute camera basis once per frame
-            cout << "need up" << endl;
+            // recompute camera basis once per frame b   
             cam.updateCam();
             resetDisplay(window);
         }

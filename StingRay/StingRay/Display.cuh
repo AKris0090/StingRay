@@ -7,7 +7,7 @@
 #include "Ray.cuh"
 #include "cuda.h"
 #include "cuda_runtime.h"
-#include "Sphere.cuh"
+#include "SceneObject.cuh"
 #include <iostream>
 
 using namespace std;
@@ -32,6 +32,6 @@ public:
 
 	void initDisplay(int screen_width, int screen_height);
 	PBRMaterial** mats;
-	Sphere** objects;
+	SceneObject** objects;
 	AreaLight** lights;
 };

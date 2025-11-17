@@ -129,6 +129,7 @@
     <CudaCompile>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
       <AdditionalOptions>-g -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <CodeGeneration>compute_86,sm_86</CodeGeneration>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -195,6 +196,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.cuh" />
+    <ClInclude Include="SceneObject.cuh" />
+    <ClInclude Include="tiny_obj_loader.h" />
     <ClInclude Include="Triangle.cuh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

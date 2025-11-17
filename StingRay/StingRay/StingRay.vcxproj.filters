@@ -86,5 +86,9 @@
     <ClInclude Include="Camera.cuh">
       <Filter>Source Files\Camera</Filter>
     </ClInclude>
+    <ClInclude Include="SceneObject.cuh" />
+    <ClInclude Include="tiny_obj_loader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -4,13 +4,13 @@ using namespace std;
 
 constexpr float PI = 3.14159f;
 
-__device__ V3 Tracer::calculate_shadow_ray(Ray shadowRay, Sphere** objects, AreaLight a, Ray::hitReg& primHit, int numObjects) {
+__device__ V3 Tracer::calculate_shadow_ray(Ray shadowRay, SceneObject** objects, AreaLight a, Ray::hitReg& primHit, int numObjects) {
 	// check if the ray hits anything
 	bool hit_anything = false;
 	float closest_so_far = FLT_MAX;
 	for (int k = 0; k < numObjects; k++) {
-		Sphere current = *(*(objects + k));
-		Ray::hitReg temp_rec = current.hit(shadowRay, 0.00001f, closest_so_far);
+		SceneObject* current = *(objects + k);
+		Ray::hitReg temp_rec = intersect(current, shadowRay, 0.00001, closest_so_far);
 		if (temp_rec.hit) {
 			hit_anything = true;
 			closest_so_far = temp_rec.time;
@@ -76,7 +76,7 @@ __device__ V3 cookTorrence(const V3& normal, const V3& view, const V3& light, co
 	return (kd * albedo / PI + spec) * ndotl;
 }
 
-__device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** lights, int max_bounces, int numObjects, int numLights, curandState* localDevState) {
+__device__ V3 Tracer::trace_ray(const Ray& ray, SceneObject** objects, AreaLight** lights, int max_bounces, int numObjects, int numLights, curandState* localDevState) {
 	Ray cur_r = ray;
 	V3 radiance(0.0f);
 	V3 attenuation(1.0f);
@@ -90,10 +90,10 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Sphere** objects, AreaLight** li
 		float closest_so_far = FLT_MAX;
 		PBRMaterial* hitMaterial = nullptr;
 		for (int j = 0; j < numObjects; j++) {
-			Sphere current = *(*(objects + j));
-			temp_rec = current.hit(cur_r, 0.00001f, closest_so_far);
+			SceneObject* current = *(objects + j);
+			temp_rec = intersect(current, cur_r, 0.00001f, closest_so_far);
 			if (temp_rec.hit) {
-				hitMaterial = current.mat;
+				hitMaterial = current->mat;
 				hit_anything = true;
 				closest_so_far = temp_rec.time;
 				hit = temp_rec;
