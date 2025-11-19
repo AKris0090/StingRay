@@ -60,9 +60,6 @@
     <CudaCompile Include="PBRMat.cuh">
       <Filter>Source Files\PBRMat</Filter>
     </CudaCompile>
-    <CudaCompile Include="Ray.cu">
-      <Filter>Source Files\Ray</Filter>
-    </CudaCompile>
     <CudaCompile Include="Ray.cuh">
       <Filter>Source Files\Ray</Filter>
     </CudaCompile>
@@ -75,6 +72,7 @@
     <CudaCompile Include="Vector.cuh">
       <Filter>Source Files\Vector</Filter>
     </CudaCompile>
+    <CudaCompile Include="Scene.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.cuh">
@@ -83,9 +81,11 @@
     <ClInclude Include="tiny_obj_loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SceneObject.cuh">
+    <ClInclude Include="Scene.cuh">
       <Filter>Source Files\SceneObject</Filter>
     </ClInclude>
-    <ClInclude Include="BVH.cuh" />
+    <ClInclude Include="BVH.cuh">
+      <Filter>Source Files\AABB</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

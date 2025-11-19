@@ -173,9 +173,7 @@
     <CudaCompile Include="PBRMat.cu">
       <FileType>Document</FileType>
     </CudaCompile>
-    <CudaCompile Include="Ray.cu">
-      <FileType>Document</FileType>
-    </CudaCompile>
+    <CudaCompile Include="Scene.cu" />
     <CudaCompile Include="StingRay.cu">
       <FileType>Document</FileType>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">-std=c++17 -Xcompiler "/std:c++17" %(AdditionalOptions)</AdditionalOptions>
@@ -196,7 +194,7 @@
   <ItemGroup>
     <ClInclude Include="BVH.cuh" />
     <ClInclude Include="Camera.cuh" />
-    <ClInclude Include="SceneObject.cuh" />
+    <ClInclude Include="Scene.cuh" />
     <ClInclude Include="tiny_obj_loader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

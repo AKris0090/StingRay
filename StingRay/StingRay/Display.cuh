@@ -7,7 +7,7 @@
 #include "Ray.cuh"
 #include "cuda.h"
 #include "cuda_runtime.h"
-#include "SceneObject.cuh"
+#include "Scene.cuh"
 #include <iostream>
 
 using namespace std;

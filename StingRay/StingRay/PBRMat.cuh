@@ -1,12 +1,12 @@
 #pragma once
+
 #include <random>
 #include "Vector.cuh"
 #include "Ray.cuh"
 #include <curand.h>
 #include <curand_kernel.h>
 
-class PBRMaterial {
-public:
+struct PBRMaterial {
 	V3 base_color;
 	float metallic;
 	float roughness;

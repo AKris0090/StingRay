@@ -1,6 +1,10 @@
 #pragma once
 #include "Vector.cuh"
 
+struct GPUCam {
+    V3 origin, botLeft, horizontal, vertical;
+};
+
 struct Camera {
 	V3 origin, lookat, up, botLeft, horizontal, vertical, forward;
     float pitch, yaw, hWidth, hHeight;
@@ -8,6 +12,10 @@ struct Camera {
 
     inline float radians(float deg) {
         return deg * (3.141593 / 180.0f);
+    }
+
+    GPUCam getCamStruct() {
+        return GPUCam{ origin, botLeft, horizontal, vertical };
     }
 
 	Camera(int width, int height, float fov) {

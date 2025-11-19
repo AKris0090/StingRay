@@ -7,5 +7,4 @@ struct AABB {
 struct BVHNode {
 	BVHNode* left, * right;
 	bool isLeaf;
-	vector<
 };

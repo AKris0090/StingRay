@@ -2,22 +2,54 @@
 #include <iostream>
 using namespace std;
 
-constexpr float PI = 3.14159f;
+constexpr float PI = 3.14159265f;
+constexpr float EPS = 1e-6f;
 
-__device__ V3 Tracer::calculate_shadow_ray(Ray shadowRay, SceneObject** objects, AreaLight a, Ray::hitReg& primHit, int numObjects) {
+static __device__ Ray::hitReg intersectTriangle(Ray& rayIn, const Triangle& t, float tMin, float tMax) {
+	Ray::hitReg hitOut{};
+	V3 edge1 = t.v1 - t.v0;
+	V3 edge2 = t.v2 - t.v0;
+	V3 pvec = rayIn.direction.cross(edge2);
+	float det = edge1.dot(pvec);
+
+	if (fabsf(det) < EPS) return hitOut;
+
+	float invDet = 1.0f / det;
+	V3 tvec = rayIn.origin - t.v0;
+	float u = tvec.dot(pvec) * invDet;
+	if (u < 0.0f || u > 1.0f)
+		return hitOut;
+
+	V3 qvec = tvec.cross(edge1);
+	float v = rayIn.direction.dot(qvec) * invDet;
+	if (v < 0.0f || u + v > 1.0f)
+		return hitOut;
+
+	float time = edge2.dot(qvec) * invDet;
+	if (time < tMin || time > tMax)
+		return hitOut;
+
+	hitOut.time = time;
+	hitOut.hit = true;
+	hitOut.normal_vector = t.normal;
+
+	return hitOut;
+}
+
+__device__ V3 Tracer::calculate_shadow_ray(Ray shadowRay, Scene* scene, AreaLight& a, Ray::hitReg& primHit) {
 	// check if the ray hits anything
 	bool hit_anything = false;
 	float closest_so_far = FLT_MAX;
-	for (int k = 0; k < numObjects; k++) {
-		SceneObject* current = *(objects + k);
-		Ray::hitReg temp_rec = intersect(current, shadowRay, 0.00001, closest_so_far);
+	for (int k = 0; k < scene->primitiveCounter; k++) {
+		Triangle current = scene->d_primitives[k];
+		Ray::hitReg temp_rec = intersectTriangle(shadowRay, current, 0.00001, closest_so_far);
 		if (temp_rec.hit) {
 			hit_anything = true;
 			closest_so_far = temp_rec.time;
 		}
 	}
 	if (!hit_anything) {
-		return a.color * a.get_intensity(primHit.hitPoint.distance_to(a.pos.origin));
+		return a.color * a.get_intensity(primHit.hitPoint.distance_to(a.pos));
 	} else {
 		return V3(0, 0, 0);
 	}
@@ -48,7 +80,7 @@ __device__ V3 fSchlick(float cosTheta, const V3& F0) {
 }
 
 // cook-torrence BRDF
-__device__ V3 cookTorrence(const V3& normal, const V3& view, const V3& light, const PBRMaterial* mat) {
+__device__ V3 cookTorrence(const V3& normal, const V3& view, const V3& light, const PBRMaterial& mat) {
 	V3 half = (view + light).normalize();
 
 	float ndotl = fmaxf(normal.dot(light), 0.0f);
@@ -56,13 +88,13 @@ __device__ V3 cookTorrence(const V3& normal, const V3& view, const V3& light, co
 	float ndoth = fmaxf(normal.dot(half), 0.0f);
 	float vdoth = fmaxf(view.dot(half), 0.0f);
 
-	V3 albedo = mat->base_color / 255.0f;
+	V3 albedo = mat.base_color / 255.0f;
 
 	V3 F0 = V3(0.04f);
-	F0 = F0 * (1.0f - mat->metallic) + albedo * mat->metallic;
+	F0 = F0 * (1.0f - mat.metallic) + albedo * mat.metallic;
 
-	float normalDist = dGGX(ndoth, mat->roughness);
-	float geom = gSmith(ndotv, ndotl, mat->roughness);
+	float normalDist = dGGX(ndoth, mat.roughness);
+	float geom = gSmith(ndotv, ndotl, mat.roughness);
 	V3 F = fSchlick(vdoth, F0);
 
 	V3 numerator = F * normalDist * geom;
@@ -71,12 +103,12 @@ __device__ V3 cookTorrence(const V3& normal, const V3& view, const V3& light, co
 	V3 spec = numerator / denominator;
 	V3 ks = F;
 	V3 kd = V3(1.0f) - ks;
-	kd *= (1.0f - mat->metallic);
+	kd *= (1.0f - mat.metallic);
 
 	return (kd * albedo / PI + spec) * ndotl;
 }
 
-__device__ V3 Tracer::trace_ray(const Ray& ray, SceneObject** objects, AreaLight** lights, int max_bounces, int numObjects, int numLights, curandState* localDevState) {
+__device__ V3 Tracer::trace_ray(const Ray& ray, Scene* scene, int max_bounces, curandState* localDevState) {
 	Ray cur_r = ray;
 	V3 radiance(0.0f);
 	V3 attenuation(1.0f);
@@ -88,12 +120,11 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, SceneObject** objects, AreaLight
 		Ray::hitReg temp_rec;
 		bool hit_anything = false;
 		float closest_so_far = FLT_MAX;
-		PBRMaterial* hitMaterial = nullptr;
-		for (int j = 0; j < numObjects; j++) {
-			SceneObject* current = *(objects + j);
-			temp_rec = intersect(current, cur_r, 0.00001f, closest_so_far);
+		for (int j = 0; j < scene->primitiveCounter; j++) {
+			Triangle current = scene->d_primitives[j];
+			temp_rec = intersectTriangle(cur_r, current, 0.00001f, closest_so_far);
 			if (temp_rec.hit) {
-				hitMaterial = current->mat;
+				temp_rec.hitMaterialIdx = current.matIdx;
 				hit_anything = true;
 				closest_so_far = temp_rec.time;
 				hit = temp_rec;
@@ -110,20 +141,20 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, SceneObject** objects, AreaLight
 		//}
 
 		Ray secondaryRay;
-		V3 albedo = hitMaterial->hitColor(cur_r, hit, secondaryRay, localDevState);
+		V3 albedo = scene->d_mats[hit.hitMaterialIdx].hitColor(cur_r, hit, secondaryRay, localDevState);
 
 		V3 direct(0.0f);
-		for (int j = 0; j < numLights; j++) {
-			AreaLight l = *(*(lights + j));
-			V3 lightRay = (l.pos.origin - hit.hitPoint).normalize();
+		for (int j = 0; j < scene->lightCounter; j++) {
+			AreaLight l = scene->d_lights[j];
+			V3 lightRay = (l.pos - hit.hitPoint).normalize();
 
 			// random light sample (for soft shadows)
-			V3 randLightPos = l.pos.origin + curand_uniform(localDevState) * l.pos.radius;
+			V3 randLightPos = l.pos + curand_uniform(localDevState) * l.radius;
 			V3 shadowSampleDir = (randLightPos - hit.hitPoint).normalize();
 
 			Ray shadowRay = Ray(hit.hitPoint + hit.normal_vector * 1e-6f, shadowSampleDir);
 
-			direct += cookTorrence(hit.normal_vector, -cur_r.direction, lightRay, hitMaterial) * calculate_shadow_ray(shadowRay, objects, l, hit, numObjects);
+			direct += cookTorrence(hit.normal_vector, -cur_r.direction, lightRay, scene->d_mats[hit.hitMaterialIdx]) * calculate_shadow_ray(shadowRay, scene, l, hit);
 		}
 
 		radiance += attenuation * direct;

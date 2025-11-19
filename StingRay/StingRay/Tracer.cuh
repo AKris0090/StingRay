@@ -3,7 +3,7 @@
 #include "AreaLight.cuh"
 #include "device_launch_parameters.h"
 #include "PBRMat.cuh"
-#include "SceneObject.cuh"
+#include "Scene.cuh"
 
 using namespace std;
 
@@ -12,6 +12,6 @@ public:
 	Ray pRay;
 
 	// Should return a color that corresponds to the traced ray
-	__device__ static V3 calculate_shadow_ray(Ray shadowRay, SceneObject** objects, AreaLight a, Ray::hitReg& primHit, int numObjects);
-	__device__ static V3 trace_ray(const Ray& ray, SceneObject** objects, AreaLight** lights, int max_bounces, int numObjects, int numLights, curandState* localDevState);
+	__device__ static V3 calculate_shadow_ray(Ray shadowRay, Scene* objects, AreaLight& a, Ray::hitReg& primHit);
+	__device__ static V3 trace_ray(const Ray& ray, Scene* scene, int max_bounces, curandState* localDevState);
 };

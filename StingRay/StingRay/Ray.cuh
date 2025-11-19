@@ -8,6 +8,7 @@ public:
 		V3 normal_vector = V3(0);
 		V3 hitPoint = V3(0);
 		bool hit = false;
+		int hitMaterialIdx;
 
 		__device__ hitReg() {};
 	};
