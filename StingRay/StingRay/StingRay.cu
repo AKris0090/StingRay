@@ -223,7 +223,6 @@ int main(int argc, char** arcgv) {
 
     DisplayWindow window;
 
-    int numObjects, numLights;
     bool running = true;
     SDL_Event event;
     float lastFrameTime = 0.0f;
