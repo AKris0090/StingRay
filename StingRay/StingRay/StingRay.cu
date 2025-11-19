@@ -70,11 +70,25 @@ void setupObjectsHost(vector<SceneObject*>& hostObjects, vector<PBRMaterial*>& h
     hostMaterials.push_back(red);
     hostMaterials.push_back(blue);
 
-    Sphere* s2 = new Sphere(V3(0, -100.5, -1), 100);
-    s2->base.type = SPHERE;
-    s2->base.matIdx = 2;
+    Triangle* t1 = new Triangle(
+        V3(-50, -0.5f, -50),
+        V3(50, -0.5f, -50),
+        V3(50, -0.5f, 50)
+    );
+    t1->normal = V3(0, 1, 0);
+    t1->base.type = TRIANGLE;
+    t1->base.matIdx = 2;
+    hostObjects.push_back((SceneObject*)t1);
 
-    hostObjects.push_back((SceneObject*)s2);
+    Triangle* t2 = new Triangle(
+        V3(-50, -0.5f, -50),
+        V3(50, -0.5f, 50),
+        V3(-50, -0.5f, 50)
+    );
+    t2->normal = V3(0, 1, 0);
+    t2->base.type = TRIANGLE;
+    t2->base.matIdx = 2;
+    hostObjects.push_back((SceneObject*)t2);
 }
 
 void setupObjectsDevice(vector<SceneObject*>& hostObjects, vector<PBRMaterial*>& hostMaterials, vector<AreaLight*>& hostLights, DisplayWindow& window) {
@@ -160,9 +174,22 @@ void loadModel(string filepath, vector<SceneObject*>& hostObjects) {
             V3 v2 = fetch(i2);
             V3 v3 = fetch(i3);
 
+            auto fetchN = [&](tinyobj::index_t idx) {
+                return V3(
+                    attrib.normals[3 * idx.normal_index + 0],
+                    attrib.normals[3 * idx.normal_index + 1],
+                    attrib.normals[3 * idx.normal_index + 2]
+                );
+                };
+
+            V3 n1 = fetchN(i1);
+            V3 n2 = fetchN(i2);
+            V3 n3 = fetchN(i3);
+
             Triangle* t = new Triangle(v1, v2, v3);
             t->base.type = TRIANGLE;
             t->base.matIdx = 1;
+            t->normal = ((n1 + n2 + n3) / 3).normalize();
             hostObjects.push_back((SceneObject*)t);
 
             index_offset += fv;
@@ -238,7 +265,6 @@ int main(int argc, char** arcgv) {
     gpuChk(cudaMalloc((void**)&devStates, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(curandState)));
     gpuChk(cudaMalloc((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
     gpuChk(cudaMalloc((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3))));
-    gpuChk(cudaMallocManaged((void**)&(window.copied_origin), sizeof(V3)));
 
     Uint8* copyTotals;
     size_t totalSize = (size_t)((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3);
@@ -254,7 +280,6 @@ int main(int argc, char** arcgv) {
     loadModel("./objects/fox.obj", hostObjects);
     setupObjectsDevice(hostObjects, hostMaterials, hostLights, window);
 
-    window.copied_origin = cam.origin;
     window.texture = SDL_CreateTexture(window.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     while (running) {
@@ -291,7 +316,7 @@ int main(int argc, char** arcgv) {
 
         if (window.repeat_samples < NUM_SAMPLES) {
             window.repeat_samples += 1;
-            updateDisplay << <blocks, threads >> > (window.totals, window.devPixels, cam.horizontal, cam.vertical, cam.botLeft, window.copied_origin, NUM_BOUNCES, hostObjects.size(), window.objects, hostLights.size(), window.lights, devStates, window.repeat_samples, unsigned(rand()));
+            updateDisplay << <blocks, threads >> > (window.totals, window.devPixels, cam.horizontal, cam.vertical, cam.botLeft, cam.origin, NUM_BOUNCES, hostObjects.size(), window.objects, hostLights.size(), window.lights, devStates, window.repeat_samples, unsigned(rand()));
             gpuChk(cudaDeviceSynchronize());
             gpuChk(cudaPeekAtLastError());
 

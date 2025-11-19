@@ -25,20 +25,20 @@
     <Filter Include="Source Files\Ray">
       <UniqueIdentifier>{9c30f961-acc4-4f4c-8f2c-83056eff7453}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Sphere">
-      <UniqueIdentifier>{a49aa16d-102d-4691-8aba-72a92c8b63e4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\PBRMat">
       <UniqueIdentifier>{ef7cc603-4b1c-4026-8fbb-1f1d526f6d57}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\Lights">
       <UniqueIdentifier>{734157fc-1633-41b5-b497-b57e2b47f887}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Triangle">
-      <UniqueIdentifier>{b26895a1-de0e-453d-882a-f2ee07d90dd5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Camera">
       <UniqueIdentifier>{540b2542-8e42-4b0f-9839-acbceb529805}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\SceneObject">
+      <UniqueIdentifier>{aade4108-efad-4c84-9a07-4014f21cd4df}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\AABB">
+      <UniqueIdentifier>{d42880f3-6a2c-4639-899d-835acad58e9c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -66,9 +66,6 @@
     <CudaCompile Include="Ray.cuh">
       <Filter>Source Files\Ray</Filter>
     </CudaCompile>
-    <CudaCompile Include="Sphere.cuh">
-      <Filter>Source Files\Sphere</Filter>
-    </CudaCompile>
     <CudaCompile Include="Tracer.cu">
       <Filter>Source Files\Tracer</Filter>
     </CudaCompile>
@@ -80,15 +77,15 @@
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Triangle.cuh">
-      <Filter>Source Files\Triangle</Filter>
-    </ClInclude>
     <ClInclude Include="Camera.cuh">
       <Filter>Source Files\Camera</Filter>
     </ClInclude>
-    <ClInclude Include="SceneObject.cuh" />
     <ClInclude Include="tiny_obj_loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SceneObject.cuh">
+      <Filter>Source Files\SceneObject</Filter>
+    </ClInclude>
+    <ClInclude Include="BVH.cuh" />
   </ItemGroup>
 </Project>

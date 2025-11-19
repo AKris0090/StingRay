@@ -189,16 +189,15 @@
     <CudaCompile Include="AreaLight.cuh" />
     <CudaCompile Include="Display.cuh" />
     <CudaCompile Include="PBRMat.cuh" />
-    <CudaCompile Include="Sphere.cuh" />
     <CudaCompile Include="Ray.cuh" />
     <CudaCompile Include="Tracer.cuh" />
     <CudaCompile Include="Vector.cuh" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BVH.cuh" />
     <ClInclude Include="Camera.cuh" />
     <ClInclude Include="SceneObject.cuh" />
     <ClInclude Include="tiny_obj_loader.h" />
-    <ClInclude Include="Triangle.cuh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

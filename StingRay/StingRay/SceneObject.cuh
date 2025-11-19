@@ -53,6 +53,7 @@ struct Triangle {
 	SceneObject base;
 
 	V3 v0, v1, v2;
+	V3 normal;
 	Triangle(V3 v1, V3 v2, V3 v3) { this->v0 = v1; this->v1 = v2; this->v2 = v3; base.mat = nullptr; };
 };
 
@@ -79,7 +80,7 @@ static __device__ Ray::hitReg intersectTriangle(Ray& rayIn, const Triangle* t, f
 		return hitOut;
 	hitOut.time = time;
 	hitOut.hit = true;
-	hitOut.normal_vector = edge1.cross(edge2).normalize();
+	hitOut.normal_vector = t->normal;
 
 	return hitOut;
 }

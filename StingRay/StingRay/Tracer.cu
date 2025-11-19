@@ -105,6 +105,9 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, SceneObject** objects, AreaLight
 			// add sky color here if necessary (radiance += attenuation * env_color)
 			break;
 		}
+		//else {
+		//	return hitMaterial->base_color;
+		//}
 
 		Ray secondaryRay;
 		V3 albedo = hitMaterial->hitColor(cur_r, hit, secondaryRay, localDevState);
@@ -118,7 +121,7 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, SceneObject** objects, AreaLight
 			V3 randLightPos = l.pos.origin + curand_uniform(localDevState) * l.pos.radius;
 			V3 shadowSampleDir = (randLightPos - hit.hitPoint).normalize();
 
-			Ray shadowRay = Ray(hit.hitPoint + hit.normal_vector * 1e-4f, shadowSampleDir);
+			Ray shadowRay = Ray(hit.hitPoint + hit.normal_vector * 1e-6f, shadowSampleDir);
 
 			direct += cookTorrence(hit.normal_vector, -cur_r.direction, lightRay, hitMaterial) * calculate_shadow_ray(shadowRay, objects, l, hit, numObjects);
 		}
