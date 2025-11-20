@@ -107,4 +107,16 @@ struct V3 {
 	__host__ __device__ float dot(const V3 other) const noexcept {
 		return x * other.x + y * other.y + z * other.z;
 	};
+
+	const float& operator[](int i) const {
+		return ((&x)[i]);
+	}
+
+	static V3 vminf(V3 v1, V3 v2) {
+		return V3(fminf(v1.x, v2.x), fminf(v1.y, v2.y), fminf(v1.z, v2.z));
+	}
+
+	static V3 vmaxf(V3 v1, V3 v2) {
+		return V3(fmaxf(v1.x, v2.x), fmaxf(v1.y, v2.y), fmaxf(v1.z, v2.z));
+	}
 };

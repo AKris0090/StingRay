@@ -1,6 +1,7 @@
 #include "Display.cuh"
 #include "SDL.h"
 #include "Camera.cuh"
+#include "Tracer.cuh"
 #include "Scene.cuh"
 #include "device_launch_parameters.h"
 #include <random>
@@ -37,7 +38,7 @@ __device__ float clampRGB(float in) {
     }
 }
 
-__host__ void setupObjectsHost(Scene& scene) {
+void setupObjectsHost(Scene& scene) {
     scene.addLight(V3(1.0f, 1.5f, 2.0f), 0.15f, 9.0f);
     scene.addLight(V3(-1.0f, 1.5f, 2.0f), 0.15f, 9.0f);
     scene.addLight(V3(1.0f, 1.5f, -2.0f), 0.15f, 9.0f);
@@ -56,13 +57,6 @@ __host__ void setupObjectsHost(Scene& scene) {
     scene.addTriangle(V3(-50, -0.5f, -50),
         V3(50, -0.5f, -50),
         V3(50, -0.5f, 50), 2);
-}
-
-__host__ void resetDisplay(DisplayWindow& window) {
-    cudaMemset(window.totals, 0, ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3)));
-    cudaMemset(window.devPixels, 0, ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3)));
-
-    window.repeat_samples = 0;
 }
 
 __global__ void updateDisplay(V3* totals, Uint8* devPixels, GPUCam* cam, const int numBounces, Scene* scene, curandState* devStates, int repeatSamples, unsigned long seed) {
@@ -88,7 +82,7 @@ __global__ void updateDisplay(V3* totals, Uint8* devPixels, GPUCam* cam, const i
     devPixels[(index * 3) + 2] = totals[index].z / repeatSamples;
 }
 
-void updateProgressBar(float progress, std::chrono::steady_clock::time_point t1, std::chrono::steady_clock::time_point t2) {
+static void updateProgressBar(float progress, std::chrono::steady_clock::time_point t1, std::chrono::steady_clock::time_point t2) {
     cout << "\r";
 
     duration<double, std::milli> ms_double = t2 - t1;
@@ -137,6 +131,7 @@ int main(int argc, char** arcgv) {
     Scene h_scene;
     setupObjectsHost(h_scene);
     h_scene.offloadObjects();
+    h_scene.buildBVH();
 
     Scene* d_scene = nullptr;
     gpuChk(cudaMalloc((void**)&d_scene, sizeof(Scene)));
@@ -212,7 +207,11 @@ int main(int argc, char** arcgv) {
             cam.updateCam();
             h_cam = cam.getCamStruct();
             gpuChk(cudaMemcpy((void*)d_cam, &h_cam, sizeof(GPUCam), cudaMemcpyHostToDevice));
-            resetDisplay(window);
+            
+            cudaMemset(window.totals, 0, ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3)));
+            cudaMemset(window.devPixels, 0, ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3)));
+
+            window.repeat_samples = 0;
         }
     }
     SDL_DestroyRenderer(window.renderer);
@@ -220,10 +219,6 @@ int main(int argc, char** arcgv) {
     SDL_DestroyWindow(window.window);
     cudaFree(window.totals);
     cudaFree(devStates);
-
-    cudaFree(window.lights);
-    cudaFree(window.objects);
-    cudaFree(window.mats);
 
     return 0;
 }

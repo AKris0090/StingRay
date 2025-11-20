@@ -72,7 +72,9 @@
     <CudaCompile Include="Vector.cuh">
       <Filter>Source Files\Vector</Filter>
     </CudaCompile>
-    <CudaCompile Include="Scene.cu" />
+    <CudaCompile Include="Scene.cu">
+      <Filter>Source Files\SceneObject</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.cuh">

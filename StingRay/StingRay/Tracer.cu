@@ -3,60 +3,18 @@
 using namespace std;
 
 constexpr float PI = 3.14159265f;
-constexpr float EPS = 1e-6f;
 
-static __device__ Ray::hitReg intersectTriangle(Ray& rayIn, const Triangle& t, float tMin, float tMax) {
-	Ray::hitReg hitOut{};
-	V3 edge1 = t.v1 - t.v0;
-	V3 edge2 = t.v2 - t.v0;
-	V3 pvec = rayIn.direction.cross(edge2);
-	float det = edge1.dot(pvec);
-
-	if (fabsf(det) < EPS) return hitOut;
-
-	float invDet = 1.0f / det;
-	V3 tvec = rayIn.origin - t.v0;
-	float u = tvec.dot(pvec) * invDet;
-	if (u < 0.0f || u > 1.0f)
-		return hitOut;
-
-	V3 qvec = tvec.cross(edge1);
-	float v = rayIn.direction.dot(qvec) * invDet;
-	if (v < 0.0f || u + v > 1.0f)
-		return hitOut;
-
-	float time = edge2.dot(qvec) * invDet;
-	if (time < tMin || time > tMax)
-		return hitOut;
-
-	hitOut.time = time;
-	hitOut.hit = true;
-	hitOut.normal_vector = t.normal;
-
-	return hitOut;
-}
-
-__device__ V3 Tracer::calculate_shadow_ray(Ray shadowRay, Scene* scene, AreaLight& a, Ray::hitReg& primHit) {
-	// check if the ray hits anything
-	bool hit_anything = false;
-	float closest_so_far = FLT_MAX;
-	for (int k = 0; k < scene->primitiveCounter; k++) {
-		Triangle current = scene->d_primitives[k];
-		Ray::hitReg temp_rec = intersectTriangle(shadowRay, current, 0.00001, closest_so_far);
-		if (temp_rec.hit) {
-			hit_anything = true;
-			closest_so_far = temp_rec.time;
-		}
-	}
-	if (!hit_anything) {
-		return a.color * a.get_intensity(primHit.hitPoint.distance_to(a.pos));
+__device__ V3 Tracer::calculate_shadow_ray(Ray& shadowRay, Scene* scene, AreaLight& a, const Ray::hitReg& primHit) {
+	Ray::hitReg temp_rec = scene->intersectBVH(shadowRay, 0);
+	if (!temp_rec.hit) {
+		return a.color * a.get_intensity(primHit.hitPoint.distance_to(a.pos + (-primHit.normal_vector * a.radius)));
 	} else {
 		return V3(0, 0, 0);
 	}
 }
 
 // normal distribution function
-__device__ float dGGX(float ndoth, float roughness) {
+static __device__ float dGGX(float ndoth, float roughness) {
 	float a = roughness * roughness;
 	float a2 = a * a;
 	float denom = (ndoth * ndoth) * (a2 - 1.0f) + 1.0f;
@@ -75,7 +33,7 @@ __device__ float gSmith(float ndotv, float ndotl, float roughness) {
 }
 
 // fresnel approximation
-__device__ V3 fSchlick(float cosTheta, const V3& F0) {
+static __device__ V3 fSchlick(float cosTheta, const V3& F0) {
 	return F0 + (V3(1.0f) - F0) * powf(1.0f - cosTheta, 5.0f);
 }
 
@@ -114,30 +72,15 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Scene* scene, int max_bounces, c
 	V3 attenuation(1.0f);
 	// iterative tracer (since no recursion on GPU!!!)
 	for (int i = 0; i < max_bounces; i++) {
-
 		// Check if the primary ray hits anything
-		Ray::hitReg hit;
-		Ray::hitReg temp_rec;
-		bool hit_anything = false;
-		float closest_so_far = FLT_MAX;
-		for (int j = 0; j < scene->primitiveCounter; j++) {
-			Triangle current = scene->d_primitives[j];
-			temp_rec = intersectTriangle(cur_r, current, 0.00001f, closest_so_far);
-			if (temp_rec.hit) {
-				temp_rec.hitMaterialIdx = current.matIdx;
-				hit_anything = true;
-				closest_so_far = temp_rec.time;
-				hit = temp_rec;
-				hit.hitPoint = cur_r.get_at(hit.time);
-			}
-		}
+		Ray::hitReg hit = scene->intersectBVH(cur_r, 0);
 
-		if (!hit_anything) {
+		if (!hit.hit) {
 			// add sky color here if necessary (radiance += attenuation * env_color)
 			break;
 		}
 		//else {
-		//	return hitMaterial->base_color;
+		//	return scene->d_mats[hit.hitMaterialIdx].base_color;
 		//}
 
 		Ray secondaryRay;
@@ -145,14 +88,20 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, Scene* scene, int max_bounces, c
 
 		V3 direct(0.0f);
 		for (int j = 0; j < scene->lightCounter; j++) {
-			AreaLight l = scene->d_lights[j];
+			AreaLight& l = scene->d_lights[j];
 			V3 lightRay = (l.pos - hit.hitPoint).normalize();
 
 			// random light sample (for soft shadows)
-			V3 randLightPos = l.pos + curand_uniform(localDevState) * l.radius;
+			float u = curand_uniform(localDevState);
+			float v = curand_uniform(localDevState);
+			float w = curand_uniform(localDevState);
+
+			V3 randOffset = V3(u, v, w) * 2.0f - V3(1.0f);
+			randOffset = randOffset.normalize() * (curand_uniform(localDevState) * l.radius);
+			V3 randLightPos = l.pos + randOffset;
 			V3 shadowSampleDir = (randLightPos - hit.hitPoint).normalize();
 
-			Ray shadowRay = Ray(hit.hitPoint + hit.normal_vector * 1e-6f, shadowSampleDir);
+			Ray shadowRay = Ray(hit.hitPoint + hit.normal_vector * 1e-4f, shadowSampleDir);
 
 			direct += cookTorrence(hit.normal_vector, -cur_r.direction, lightRay, scene->d_mats[hit.hitMaterialIdx]) * calculate_shadow_ray(shadowRay, scene, l, hit);
 		}

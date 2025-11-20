@@ -1,10 +1,7 @@
 #pragma once
-#include "Tracer.cuh"
+
 #include <SDL.h>
 #include <chrono>
-#include "PBRMat.cuh"
-#include "Vector.cuh"
-#include "Ray.cuh"
 #include "cuda.h"
 #include "cuda_runtime.h"
 #include "Scene.cuh"
@@ -31,7 +28,4 @@ public:
 	int repeat_samples = 0;
 
 	void initDisplay(int screen_width, int screen_height);
-	PBRMaterial** mats;
-	SceneObject** objects;
-	AreaLight** lights;
 };

@@ -1,14 +1,16 @@
 #pragma once
+
 #include "Vector.cuh"
+#include <float.h>
 
 struct Ray {
 public:
 	struct hitReg {
-		float time = 0;
+		float time = FLT_MAX;
 		V3 normal_vector = V3(0);
 		V3 hitPoint = V3(0);
 		bool hit = false;
-		int hitMaterialIdx;
+		int hitMaterialIdx = -1;
 
 		__device__ hitReg() {};
 	};
