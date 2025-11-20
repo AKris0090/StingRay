@@ -3,8 +3,6 @@
 #include <random>
 #include "Vector.cuh"
 #include "Ray.cuh"
-#include <curand.h>
-#include <curand_kernel.h>
 
 struct PBRMaterial {
 	V3 base_color;

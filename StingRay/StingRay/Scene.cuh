@@ -8,33 +8,6 @@
 #include <string>
 #include <iostream>
 
-// GPU Error Checking MACRO
-#define gpuChk(expr)  gpuAssert((expr), #expr, __FILE__, __LINE__)
-
-inline void gpuAssert(cudaError_t code, const char* expr, const char* file, int line, bool abort = true)
-{
-    if (code != cudaSuccess)
-    {
-        fprintf(stderr,
-            "\n================ CUDA ERROR ================\n"
-            "Expression : %s\n"
-            "Error      : %s\n"
-            "File       : %s\n"
-            "Line       : %d\n"
-            "Function   : %s\n"
-            "============================================\n",
-            expr,
-            cudaGetErrorString(code),
-            file,
-            line,
-            __func__
-        );
-
-        if (abort)
-            exit(code);
-    }
-}
-
 struct Triangle {
 	V3 v0, v1, v2;
 	V3 normal;
@@ -49,89 +22,13 @@ struct SceneObject {
     void loadModel(std::string filepath);
 };
 
-struct Scene {
-    SceneObject miscTriangles;
-    std::vector<SceneObject> h_objects;
-    std::vector<Triangle> h_triangles;
-    std::vector<PBRMaterial> h_mats;
-    std::vector<AreaLight> h_lights;
-    Triangle* d_primitives = nullptr;
+struct d_Scene {
     PBRMaterial* d_mats = nullptr;
     AreaLight* d_lights = nullptr;
-    std::vector<BVHNode> h_bvhNodes;
     BVHNode* d_bvhNodes = nullptr;
-    std::vector<uint32_t> triIdx;
-    uint32_t* d_indexBuffer = nullptr;
-    uint32_t rootIdx = 0, nodesUsed = 1;
-
-    int primitiveCounter = 0;
-    int materialCounter = 0;
     int lightCounter = 0;
-
-    void addTriangle(V3 v0, V3 v1, V3 v2, int matIdx) {
-        Triangle t(v0, v1, v2);
-        t.normal = V3(0, 1, 0);
-        t.matIdx = matIdx;
-        miscTriangles.h_primitives.push_back(t);
-    }
-
-    void addObjectFromFile(std::string filepath) {
-        SceneObject obj;
-        obj.loadModel(filepath);
-        h_objects.push_back(std::move(obj));
-    }
-
-    void addMaterial(V3 baseColor, float roughness, float metallic) {
-        PBRMaterial m = PBRMaterial(baseColor, metallic, roughness, 0, 0, 0);
-        h_mats.push_back(m);
-        materialCounter++;
-    }
-
-    void addLight(V3 pos, float radius, float intensity) {
-        AreaLight l = AreaLight(pos, radius, intensity);
-        h_lights.push_back(l);
-        lightCounter++;
-    }
-
-    void offloadObjects() {
-        primitiveCounter = miscTriangles.h_primitives.size();
-        for (const SceneObject& o : h_objects) {
-            primitiveCounter += o.h_primitives.size();
-        }
-
-        std::cout << "offloading: " << primitiveCounter << " primitives" << std::endl;
-        gpuChk(cudaMalloc((void**)&d_primitives, sizeof(Triangle) * primitiveCounter));
-        for (const SceneObject& o : h_objects) {
-            for (const Triangle& t : o.h_primitives) {
-                h_triangles.push_back(t);
-            }
-        }
-        for (const Triangle& t : miscTriangles.h_primitives) {
-            h_triangles.push_back(t);
-        }
-
-        int count = 0;
-        for (const Triangle& t : h_triangles) {
-            gpuChk(cudaMemcpy(d_primitives + count, &t, sizeof(Triangle), cudaMemcpyHostToDevice));
-            count++;
-        }
-
-        std::cout << "offloading: " << materialCounter << " materials" << std::endl;
-        count = 0;
-        gpuChk(cudaMalloc((void**)&d_mats, sizeof(PBRMaterial) * materialCounter));
-        for (const PBRMaterial& m : h_mats) {
-            gpuChk(cudaMemcpy(d_mats + count, &m, sizeof(PBRMaterial), cudaMemcpyHostToDevice));
-            count++;
-        }
-
-        std::cout << "offloading: " << lightCounter << " lights" << std::endl;
-        count = 0;
-        gpuChk(cudaMalloc((void**)&d_lights, sizeof(AreaLight) * lightCounter));
-        for (const AreaLight& l : h_lights) {
-            gpuChk(cudaMemcpy(d_lights + count, &l, sizeof(AreaLight), cudaMemcpyHostToDevice));
-            count++;
-        }
-    }
+    uint32_t* d_indexBuffer = nullptr;
+    Triangle* d_primitives = nullptr;
 
     static __device__ Ray::hitReg intersectTriangle(Ray& rayIn, const Triangle& t, float tMin, float tMax) {
         Ray::hitReg hitOut{};
@@ -197,7 +94,8 @@ struct Scene {
                         hit = tempHit;
                     }
                 }
-            } else {
+            }
+            else {
                 uint32_t left = node.leftNode;
                 uint32_t right = node.leftNode + 1;
 
@@ -205,8 +103,70 @@ struct Scene {
                 stack[sp++] = left;
             }
         }
-        
+
         return hit;
+    }
+};
+
+struct Scene {
+    SceneObject miscTriangles;
+    std::vector<SceneObject> h_objects;
+    std::vector<Triangle> h_triangles;
+    std::vector<PBRMaterial> h_mats;
+    std::vector<AreaLight> h_lights;
+    Triangle* d_primitives = nullptr;
+    PBRMaterial* d_mats = nullptr;
+    AreaLight* d_lights = nullptr;
+    std::vector<BVHNode> h_bvhNodes;
+    BVHNode* d_bvhNodes = nullptr;
+    std::vector<uint32_t> triIdx;
+    uint32_t* d_indexBuffer = nullptr;
+    uint32_t rootIdx = 0, nodesUsed = 1;
+
+    int lightCounter = 0;
+
+    void addTriangle(V3 v0, V3 v1, V3 v2, int matIdx) {
+        Triangle t(v0, v1, v2);
+        t.normal = V3(0, 1, 0);
+        t.matIdx = matIdx;
+        miscTriangles.h_primitives.push_back(t);
+    }
+
+    void addObjectFromFile(std::string filepath) {
+        SceneObject obj;
+        obj.loadModel(filepath);
+        h_objects.push_back(std::move(obj));
+    }
+
+    void addMaterial(V3 baseColor, float roughness, float metallic) {
+        PBRMaterial m = PBRMaterial(baseColor, metallic, roughness, 0, 0, 0);
+        h_mats.push_back(m);
+    }
+
+    void addLight(V3 pos, float radius, float intensity) {
+        AreaLight l = AreaLight(pos, radius, intensity);
+        h_lights.push_back(l);
+        lightCounter++;
+    }
+
+    void offloadObjects() {
+        for (const SceneObject& o : h_objects) {
+            for (const Triangle& t : o.h_primitives) {
+                h_triangles.push_back(t);
+            }
+        }
+        for (const Triangle& t : miscTriangles.h_primitives) {
+            h_triangles.push_back(t);
+        }
+
+        std::cout << "offloading: " << h_triangles.size() << " primitives" << std::endl;
+        d_primitives = upload_vector(h_triangles);
+
+        std::cout << "offloading: " << h_mats.size() << " materials" << std::endl;
+        d_mats = upload_vector(h_mats);
+
+        std::cout << "offloading: " << h_lights.size() << " lights" << std::endl;
+        d_lights = upload_vector(h_lights);
     }
 
     void updateNodeBounds(uint32_t nodeIdx) {
@@ -265,7 +225,7 @@ struct Scene {
     }
 
     void buildBVH() {
-        h_bvhNodes.resize(primitiveCounter * 2 - 1);
+        h_bvhNodes.resize(h_triangles.size() * 2 - 1);
         std::vector<V3> centroidBuffer;
         int count = 0;
         for (const SceneObject& o : h_objects) {
@@ -282,18 +242,23 @@ struct Scene {
         }
 
         BVHNode& root = h_bvhNodes[rootIdx];
-        root.firstTriIdx = 0, root.leftNode = 0, root.primCount = primitiveCounter;
+        root.firstTriIdx = 0, root.leftNode = 0, root.primCount = h_triangles.size();
         updateNodeBounds(rootIdx);
         subdivideBVH(rootIdx, centroidBuffer);
 
-        count = 0;
-        gpuChk(cudaMalloc((void**)&d_bvhNodes, sizeof(BVHNode) * (primitiveCounter * 2 - 1)));
-        for (const BVHNode& n : h_bvhNodes) {
-            gpuChk(cudaMemcpy(d_bvhNodes + count, &n, sizeof(BVHNode), cudaMemcpyHostToDevice));
-            count++;
-        }
-
-        gpuChk(cudaMalloc((void**)&d_indexBuffer, sizeof(uint32_t) * triIdx.size()));
-        gpuChk(cudaMemcpy(d_indexBuffer, triIdx.data(), sizeof(uint32_t) * triIdx.size(), cudaMemcpyHostToDevice));
+        d_bvhNodes = upload_vector(h_bvhNodes);
+        d_indexBuffer = upload_vector(triIdx);
     }
+
+    d_Scene getDeviceScene() {
+        return d_Scene{
+            d_mats,
+            d_lights,
+            d_bvhNodes,
+            lightCounter,
+            d_indexBuffer,
+            d_primitives
+        };
+    }
+    
 };

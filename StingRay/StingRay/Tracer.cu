@@ -4,7 +4,7 @@ using namespace std;
 
 constexpr float PI = 3.14159265f;
 
-__device__ V3 Tracer::calculate_shadow_ray(Ray& shadowRay, Scene* scene, AreaLight& a, const Ray::hitReg& primHit) {
+__device__ V3 Tracer::calculate_shadow_ray(Ray& shadowRay, d_Scene* scene, AreaLight& a, const Ray::hitReg& primHit) {
 	Ray::hitReg temp_rec = scene->intersectBVH(shadowRay, 0);
 	if (!temp_rec.hit) {
 		return a.color * a.get_intensity(primHit.hitPoint.distance_to(a.pos + (-primHit.normal_vector * a.radius)));
@@ -66,7 +66,7 @@ __device__ V3 cookTorrence(const V3& normal, const V3& view, const V3& light, co
 	return (kd * albedo / PI + spec) * ndotl;
 }
 
-__device__ V3 Tracer::trace_ray(const Ray& ray, Scene* scene, int max_bounces, curandState* localDevState) {
+__device__ V3 Tracer::trace_ray(const Ray& ray, d_Scene* scene, int max_bounces, curandState* localDevState) {
 	Ray cur_r = ray;
 	V3 radiance(0.0f);
 	V3 attenuation(1.0f);

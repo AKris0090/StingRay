@@ -40,6 +40,9 @@
     <Filter Include="Source Files\AABB">
       <UniqueIdentifier>{d42880f3-6a2c-4639-899d-835acad58e9c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Utils">
+      <UniqueIdentifier>{c4a2c8e7-2d8a-4eb6-8f48-af3b78b9d788}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="StingRay.cu">
@@ -89,5 +92,6 @@
     <ClInclude Include="BVH.cuh">
       <Filter>Source Files\AABB</Filter>
     </ClInclude>
+    <ClInclude Include="CUDAUtils.cuh" />
   </ItemGroup>
 </Project>

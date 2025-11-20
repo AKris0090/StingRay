@@ -37,6 +37,6 @@ static __device__ float intersectAABB(const Ray& ray, float tMaxLimit, const V3&
 struct BVHNode {
 	V3 aabbMin, aabbMax;
 	uint32_t leftNode, firstTriIdx, primCount;
-	__device__ bool isLeaf() { return primCount > 0; }
+    __device__ bool isLeaf() const { return primCount > 0; }
 };
 

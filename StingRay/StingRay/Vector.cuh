@@ -1,7 +1,6 @@
 #pragma once
 #include <math.h>
-#include <cstdio>
-#include "device_launch_parameters.h"
+#include "CUDAUtils.cuh"
 
 struct V3 {
 	float x, y, z;

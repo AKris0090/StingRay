@@ -194,6 +194,7 @@
   <ItemGroup>
     <ClInclude Include="BVH.cuh" />
     <ClInclude Include="Camera.cuh" />
+    <ClInclude Include="CUDAUtils.cuh" />
     <ClInclude Include="Scene.cuh" />
     <ClInclude Include="tiny_obj_loader.h" />
   </ItemGroup>

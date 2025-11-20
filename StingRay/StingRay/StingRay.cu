@@ -59,7 +59,7 @@ void setupObjectsHost(Scene& scene) {
         V3(50, -0.5f, 50), 2);
 }
 
-__global__ void updateDisplay(V3* totals, Uint8* devPixels, GPUCam* cam, const int numBounces, Scene* scene, curandState* devStates, int repeatSamples, unsigned long seed) {
+__global__ void updateDisplay(V3* totals, Uint8* devPixels, GPUCam* cam, const int numBounces, d_Scene* scene, curandState* devStates, int repeatSamples, unsigned long seed) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
     int index = i + (j * SCREEN_WIDTH);
@@ -117,13 +117,13 @@ int main(int argc, char** arcgv) {
     SDL_SetRelativeMouseMode(SDL_TRUE);
 
     curandState* devStates;
-    gpuChk(cudaMalloc((void**)&devStates, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(curandState)));
-    gpuChk(cudaMalloc((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
-    gpuChk(cudaMalloc((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3))));
+    CUDA_CHECK(cudaMalloc((void**)&devStates, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(curandState)));
+    CUDA_CHECK(cudaMalloc((void**)&(window.totals), ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3))));
+    CUDA_CHECK(cudaMalloc((void**)&(window.devPixels), ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3))));
 
     Uint8* copyTotals = nullptr;
     size_t totalSize = (size_t)((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3);
-    gpuChk(cudaHostAlloc((void**)&copyTotals, totalSize, 0));
+    CUDA_CHECK(cudaHostAlloc((void**)&copyTotals, totalSize, 0));
 
     std::vector<Uint32> pixels(SCREEN_WIDTH * SCREEN_HEIGHT);
     Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, CAM_VFOV_DEG);
@@ -132,22 +132,23 @@ int main(int argc, char** arcgv) {
     setupObjectsHost(h_scene);
     h_scene.offloadObjects();
     h_scene.buildBVH();
+    d_Scene tempScene = h_scene.getDeviceScene();
 
-    Scene* d_scene = nullptr;
-    gpuChk(cudaMalloc((void**)&d_scene, sizeof(Scene)));
-    gpuChk(cudaMemcpy((void*)d_scene, &h_scene, sizeof(Scene), cudaMemcpyHostToDevice));
+    d_Scene* d_scene = nullptr;
+    CUDA_CHECK(cudaMalloc((void**)&d_scene, sizeof(d_Scene)));
+    CUDA_CHECK(cudaMemcpy((void*)d_scene, &(tempScene), sizeof(d_Scene), cudaMemcpyHostToDevice));
 
     window.texture = SDL_CreateTexture(window.renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     GPUCam* d_cam = nullptr;
-    gpuChk(cudaMalloc((void**)&d_cam, sizeof(GPUCam)));
+    CUDA_CHECK(cudaMalloc((void**)&d_cam, sizeof(GPUCam)));
     GPUCam h_cam{
         cam.origin,
         cam.botLeft,
         cam.horizontal,
         cam.vertical
     };
-    gpuChk(cudaMemcpy((void*)d_cam, &h_cam, sizeof(GPUCam), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy((void*)d_cam, &h_cam, sizeof(GPUCam), cudaMemcpyHostToDevice));
 
     while (running) {
         while (SDL_PollEvent(&event)) {
@@ -183,8 +184,8 @@ int main(int argc, char** arcgv) {
         if (window.repeat_samples < NUM_SAMPLES) {
             window.repeat_samples += 1;
             updateDisplay << <blocks, threads >> > (window.totals, window.devPixels, d_cam, NUM_BOUNCES, d_scene, devStates, window.repeat_samples, unsigned(rand()));
-            gpuChk(cudaDeviceSynchronize());
-            gpuChk(cudaPeekAtLastError());
+            CUDA_CHECK(cudaDeviceSynchronize());
+            CUDA_CHECK(cudaPeekAtLastError());
 
             cudaMemcpy(copyTotals, window.devPixels, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3, cudaMemcpyDeviceToHost);
             
@@ -206,7 +207,7 @@ int main(int argc, char** arcgv) {
             // recompute camera basis once per frame b   
             cam.updateCam();
             h_cam = cam.getCamStruct();
-            gpuChk(cudaMemcpy((void*)d_cam, &h_cam, sizeof(GPUCam), cudaMemcpyHostToDevice));
+            CUDA_CHECK(cudaMemcpy((void*)d_cam, &h_cam, sizeof(GPUCam), cudaMemcpyHostToDevice));
             
             cudaMemset(window.totals, 0, ((SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(V3)));
             cudaMemset(window.devPixels, 0, ((SCREEN_WIDTH * SCREEN_HEIGHT) * (sizeof(Uint8) * 3)));
