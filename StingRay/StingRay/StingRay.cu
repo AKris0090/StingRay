@@ -11,14 +11,14 @@ void setupObjectsHostToDevice() {
     h_scene.addMaterial(V3(255.0f, 140.0f, 0.0f), 1.0f, 0.0f);
     h_scene.addMaterial(V3(186.0f, 85.0f, 211.0f), 1.0f, 0.0f);
 
-    h_scene.addObjectFromFile("./objects/fox.obj");
+    h_scene.addObjectFromFile("./objects/dragon.obj");
 
-    h_scene.addTriangle(V3(-50, -0.5f, -50),
-        V3(50, -0.5f, 50),
-        V3(-50, -0.5f, 50), 2);
-    h_scene.addTriangle(V3(-50, -0.5f, -50),
-        V3(50, -0.5f, -50),
-        V3(50, -0.5f, 50), 2);
+    //h_scene.addTriangle(V3(-10, -0.5f, -10),
+    //    V3(10, -0.5f, 10),
+    //    V3(-10, -0.5f, 10), 2);
+    //h_scene.addTriangle(V3(-10, -0.5f, -10),
+    //    V3(10, -0.5f, -10),
+    //    V3(10, -0.5f, 10), 2);
 
     h_scene.offloadObjects();
     h_scene.buildBVH();
