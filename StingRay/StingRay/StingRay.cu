@@ -9,16 +9,16 @@ void setupObjectsHostToDevice() {
     h_scene.addMaterial(V3(100.0f, 100.0f, 100.0f), 0.75f, 1.0f);
     h_scene.addMaterial(V3(180.0f, 180.0f, 180.0f), 1.0f, 0.0f);
     h_scene.addMaterial(V3(255.0f, 140.0f, 0.0f), 1.0f, 0.0f);
-    h_scene.addMaterial(V3(186.0f, 85.0f, 211.0f), 1.0f, 0.0f);
+    h_scene.addMaterial(V3(186.0f, 85.0f, 211.0f), 0.25f, 1.0f);
 
     h_scene.addObjectFromFile("./objects/dragon.obj");
 
-    //h_scene.addTriangle(V3(-10, -0.5f, -10),
-    //    V3(10, -0.5f, 10),
-    //    V3(-10, -0.5f, 10), 2);
-    //h_scene.addTriangle(V3(-10, -0.5f, -10),
-    //    V3(10, -0.5f, -10),
-    //    V3(10, -0.5f, 10), 2);
+    //h_scene.addTriangle(V3(-5, -0.5f, -5),
+    //    V3(5, -0.5f, 5),
+    //    V3(-5, -0.5f, 5), 2);
+    //h_scene.addTriangle(V3(-5, -0.5f, -5),
+    //    V3(5, -0.5f, -5),
+    //    V3(5, -0.5f, 5), 2);
 
     h_scene.offloadObjects();
     h_scene.buildBVH();

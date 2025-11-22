@@ -56,7 +56,7 @@ void SceneObject::loadModel(std::string filepath) {
             V3 n3 = fetchN(i3);
     
             Triangle t(v1, v2, v3);
-            t.matIdx = 1;
+            t.matIdx = 2;
             t.normal = ((n1 + n2 + n3) / 3).normalize();
             h_primitives.push_back(t);
     

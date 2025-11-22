@@ -9,8 +9,8 @@
 #include <curand_kernel.h>
 #include <math_constants.h>
 
-constexpr int   SCREEN_WIDTH    = 1200;
-constexpr int   SCREEN_HEIGHT   = 600;
+constexpr int   SCREEN_WIDTH    = 1500;
+constexpr int   SCREEN_HEIGHT   = 750;
 constexpr int   NUM_PIXELS      = SCREEN_WIDTH * SCREEN_HEIGHT;
 constexpr int   NUM_BOUNCES     = 5;
 constexpr float CAM_VFOV_DEG    = 90.0f;
