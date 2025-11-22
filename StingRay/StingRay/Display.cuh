@@ -11,21 +11,26 @@ using namespace std;
 
 class DisplayWindow {
 public:
-	int SCREEN_WIDTH = 0;
-	int SCREEN_HEIGHT = 0;
-	SDL_Window* window;
-	SDL_Renderer* renderer;
-	SDL_Texture* texture;
-	SDL_Surface* surface;
-	V3* totals;
-	Uint8* devPixels;
-
-	V3 bot_left;
-	V3 horizontal;
-	V3 vertical;
-	V3 copied_origin;
-	V3 center_one;
-	int repeat_samples = 0;
+	SDL_Window* window		= nullptr;
+	SDL_Renderer* renderer	= nullptr;
+	SDL_Texture* texture	= nullptr;
+	SDL_Surface* surface	= nullptr;
+	int repeat_samples		= 0;
+	float lastFrameTime		= 0.0f;
+	bool running			= true;
 
 	void initDisplay(int screen_width, int screen_height);
 };
+
+// Clamping the color traced
+static __device__ float clampRGB(float in) {
+	if (in < 0.0f) {
+		return 0.0f;
+	}
+	else if (in > 1) {
+		return 1.0f;
+	}
+	else {
+		return in;
+	}
+}

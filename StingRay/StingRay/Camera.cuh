@@ -6,20 +6,19 @@ struct GPUCam {
 };
 
 struct Camera {
-	V3 origin, lookat, up, botLeft, horizontal, vertical, forward;
+	V3 lookat, up, forward;
     float pitch, yaw, hWidth, hHeight;
-    bool needUpdate;
+    bool needUpdate = false;
+    GPUCam h_cam{};
+
+    Camera() {};
 
     inline float radians(float deg) {
         return deg * (3.141593 / 180.0f);
     }
 
-    GPUCam getCamStruct() {
-        return GPUCam{ origin, botLeft, horizontal, vertical };
-    }
-
 	Camera(int width, int height, float fov) {
-        origin = V3(0.0f, 0.0f, 0.5f);
+        h_cam.origin = V3(0.0f, 0.0f, 0.5f);
         lookat = V3(0.0f, 0.0f, -1.0f);
         up = V3(0.0f, 1.0f, 0.0f);
 
@@ -32,13 +31,13 @@ struct Camera {
         hHeight = tanf(theta / 2.0f);
         hWidth = aspect * hHeight;
 
-        V3 w = (origin - lookat).normalize();
+        V3 w = (h_cam.origin - lookat).normalize();
         V3 u = (up.cross(w)).normalize();
         V3 v = w.cross(u);
 
-        botLeft = origin - u * hWidth - v * hHeight - w;
-        horizontal = u * (2.0f * hWidth);
-        vertical = v * (2.0f * hHeight);
+        h_cam.botLeft = h_cam.origin - u * hWidth - v * hHeight - w;
+        h_cam.horizontal = u * (2.0f * hWidth);
+        h_cam.vertical = v * (2.0f * hHeight);
 
         needUpdate = false;
 	}
@@ -57,7 +56,7 @@ struct Camera {
         direction.z = sinf(radians(yaw)) * cosf(radians(pitch));
         forward = direction.normalize();
 
-        lookat = origin + forward;
+        lookat = h_cam.origin + forward;
 
         needUpdate = true;
     }
@@ -67,9 +66,9 @@ struct Camera {
         V3 u = (up.cross(w)).normalize();
         V3 v = w.cross(u);
 
-        botLeft = origin - u * hWidth - v * hHeight - w;
-        horizontal = u * (2.0f * hWidth);
-        vertical   = v * (2.0f * hHeight);
+        h_cam.botLeft = h_cam.origin - u * hWidth - v * hHeight - w;
+        h_cam.horizontal = u * (2.0f * hWidth);
+        h_cam.vertical   = v * (2.0f * hHeight);
         needUpdate = false;
     }
 };

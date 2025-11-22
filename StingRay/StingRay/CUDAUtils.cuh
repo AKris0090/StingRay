@@ -36,13 +36,23 @@ inline void gpuAssert(cudaError_t code, const char* expr, const char* file, int 
 template<typename T>
 T* upload_vector(const std::vector<T>& vec) {
     T* devPtr = nullptr;
-
     size_t size = vec.size() * sizeof(T);
     CUDA_CHECK(cudaMalloc(&devPtr, size));
+    CUDA_CHECK(cudaMemcpy(devPtr, vec.data(), size, cudaMemcpyHostToDevice));
+    return devPtr;
+}
 
-    if (!vec.empty()) {
-        CUDA_CHECK(cudaMemcpy(devPtr, vec.data(), size, cudaMemcpyHostToDevice));
-    }
+template<typename T>
+T* device_allocate(size_t count) {
+    T* devPtr = nullptr;
+    CUDA_CHECK(cudaMalloc(&devPtr, count * sizeof(T)));
+    return devPtr;
+}
 
+template<typename T>
+T* device_alloc_and_upload(const T* obj) {
+    T* devPtr = nullptr;
+    CUDA_CHECK(cudaMalloc(&devPtr, sizeof(T)));
+    CUDA_CHECK(cudaMemcpy(devPtr, obj, sizeof(T), cudaMemcpyHostToDevice));
     return devPtr;
 }

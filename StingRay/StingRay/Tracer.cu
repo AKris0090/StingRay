@@ -5,7 +5,7 @@ using namespace std;
 constexpr float PI = 3.14159265f;
 
 __device__ V3 Tracer::calculate_shadow_ray(Ray& shadowRay, d_Scene* scene, AreaLight& a, const Ray::hitReg& primHit) {
-	Ray::hitReg temp_rec = scene->intersectBVH(shadowRay, 0);
+	Ray::hitReg temp_rec = intersectBVH(shadowRay, scene, 0);
 	if (!temp_rec.hit) {
 		return a.color * a.get_intensity(primHit.hitPoint.distance_to(a.pos + (-primHit.normal_vector * a.radius)));
 	} else {
@@ -73,7 +73,7 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, d_Scene* scene, int max_bounces,
 	// iterative tracer (since no recursion on GPU!!!)
 	for (int i = 0; i < max_bounces; i++) {
 		// Check if the primary ray hits anything
-		Ray::hitReg hit = scene->intersectBVH(cur_r, 0);
+		Ray::hitReg hit = intersectBVH(cur_r, scene, 0);
 
 		if (!hit.hit) {
 			// add sky color here if necessary (radiance += attenuation * env_color)
@@ -120,5 +120,5 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, d_Scene* scene, int max_bounces,
 
 		cur_r = secondaryRay;
 	}
-	return radiance * 255.0f;
+	return radiance;
 }

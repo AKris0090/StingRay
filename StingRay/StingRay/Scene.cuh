@@ -10,6 +10,7 @@
 
 struct Triangle {
 	V3 v0, v1, v2;
+    V3 edge1, edge2;
 	V3 normal;
 	int matIdx;
 	Triangle(V3 v1, V3 v2, V3 v3) { this->v0 = v1; this->v1 = v2; this->v2 = v3; matIdx = -1; };
@@ -23,90 +24,90 @@ struct SceneObject {
 };
 
 struct d_Scene {
-    PBRMaterial* d_mats = nullptr;
-    AreaLight* d_lights = nullptr;
-    BVHNode* d_bvhNodes = nullptr;
-    int lightCounter = 0;
+    PBRMaterial* d_mats     = nullptr;
+    AreaLight* d_lights     = nullptr;
+    BVHNode* d_bvhNodes     = nullptr;
     uint32_t* d_indexBuffer = nullptr;
-    Triangle* d_primitives = nullptr;
+    Triangle* d_primitives  = nullptr;
+    int lightCounter = 0;
+};
 
-    static __device__ Ray::hitReg intersectTriangle(Ray& rayIn, const Triangle& t, float tMin, float tMax) {
-        Ray::hitReg hitOut{};
-        V3 edge1 = t.v1 - t.v0;
-        V3 edge2 = t.v2 - t.v0;
-        V3 pvec = rayIn.direction.cross(edge2);
-        float det = edge1.dot(pvec);
+static __device__ Ray::hitReg intersectTriangle(Ray& rayIn, const Triangle* t, float tMin, float tMax) {
+    Ray::hitReg hitOut{};
+    V3 edge1 = t->v1 - t->v0;
+    V3 edge2 = t->v2 - t->v0;
+    V3 pvec = rayIn.direction.cross(edge2);
+    float det = edge1.dot(pvec);
 
-        if (fabsf(det) < EPS) return hitOut;
+    if (fabsf(det) < EPS) return hitOut;
 
-        float invDet = 1.0f / det;
-        V3 tvec = rayIn.origin - t.v0;
-        float u = tvec.dot(pvec) * invDet;
-        if (u < 0.0f || u > 1.0f)
-            return hitOut;
-
-        V3 qvec = tvec.cross(edge1);
-        float v = rayIn.direction.dot(qvec) * invDet;
-        if (v < 0.0f || u + v > 1.0f)
-            return hitOut;
-
-        float time = edge2.dot(qvec) * invDet;
-        if (time < tMin || time > tMax)
-            return hitOut;
-
-        hitOut.time = time;
-        hitOut.hit = true;
-        hitOut.hitMaterialIdx = t.matIdx;
-        hitOut.normal_vector = t.normal;
-        hitOut.hitPoint = rayIn.get_at(time);
-
+    float invDet = 1.0f / det;
+    V3 tvec = rayIn.origin - t->v0;
+    float u = tvec.dot(pvec) * invDet;
+    if (u < 0.0f || u > 1.0f)
         return hitOut;
-    }
 
-    __device__ Ray::hitReg intersectBVH(Ray& ray, uint32_t rootIdx) {
-        Ray::hitReg hit{};
+    V3 qvec = tvec.cross(edge1);
+    float v = rayIn.direction.dot(qvec) * invDet;
+    if (v < 0.0f || u + v > 1.0f)
+        return hitOut;
 
-        uint32_t stack[32];
-        int sp = 0;
+    float time = edge2.dot(qvec) * invDet;
+    if (time < tMin || time > tMax)
+        return hitOut;
 
-        stack[sp++] = rootIdx;
+    hitOut.time = time;
+    hitOut.hit = true;
+    hitOut.hitMaterialIdx = t->matIdx;
+    hitOut.normal_vector = t->normal;
+    hitOut.hitPoint = rayIn.get_at(time);
 
-        float closest = FLT_MAX;
+    return hitOut;
+}
 
-        while (sp > 0) {
-            uint32_t nodeIdx = stack[--sp];
-            BVHNode& node = d_bvhNodes[nodeIdx];
+static __device__ Ray::hitReg intersectBVH(Ray& ray, const d_Scene* scene, uint32_t rootIdx) {
+    Ray::hitReg hit{};
 
-            float tEntry = intersectAABB(ray, closest, node.aabbMin, node.aabbMax);
-            if (tEntry == FLT_MAX) {
-                continue;
-            }
+    uint32_t stack[32];
+    int sp = 0;
 
-            if (node.isLeaf()) {
-                for (uint32_t i = 0; i < node.primCount; i++) {
-                    uint32_t triIdx = (uint32_t)d_indexBuffer[node.firstTriIdx + i];
-                    Triangle tri = d_primitives[triIdx];
+    stack[sp++] = rootIdx;
 
-                    // update hitReg
-                    Ray::hitReg tempHit = intersectTriangle(ray, tri, 0.00001f, closest);
+    float closest = FLT_MAX;
 
-                    if (tempHit.hit && tempHit.time < hit.time) {
-                        hit = tempHit;
-                    }
-                }
-            }
-            else {
-                uint32_t left = node.leftNode;
-                uint32_t right = node.leftNode + 1;
+    while (sp > 0) {
+        uint32_t nodeIdx = stack[--sp];
+        BVHNode& node = scene->d_bvhNodes[nodeIdx];
 
-                stack[sp++] = right;
-                stack[sp++] = left;
-            }
+        float tEntry = intersectAABB(ray, closest, node.aabbMin, node.aabbMax);
+        if (tEntry == FLT_MAX) {
+            continue;
         }
 
-        return hit;
+        if (node.isLeaf()) {
+            for (uint32_t i = 0; i < node.primCount; i++) {
+                uint32_t triIdx = (uint32_t)scene->d_indexBuffer[node.firstTriIdx + i];
+                const Triangle* tri = &scene->d_primitives[triIdx];
+
+                // update hitReg
+                Ray::hitReg tempHit = intersectTriangle(ray, tri, 0.00001f, closest);
+
+                if (tempHit.hit && tempHit.time < hit.time) {
+                    hit = tempHit;
+                }
+            }
+        }
+        else {
+            uint32_t left = node.leftNode;
+            uint32_t right = node.leftNode + 1;
+
+            stack[sp++] = right;
+            stack[sp++] = left;
+        }
     }
-};
+
+    return hit;
+}
 
 struct Scene {
     SceneObject miscTriangles;
@@ -249,16 +250,4 @@ struct Scene {
         d_bvhNodes = upload_vector(h_bvhNodes);
         d_indexBuffer = upload_vector(triIdx);
     }
-
-    d_Scene getDeviceScene() {
-        return d_Scene{
-            d_mats,
-            d_lights,
-            d_bvhNodes,
-            lightCounter,
-            d_indexBuffer,
-            d_primitives
-        };
-    }
-    
 };

@@ -92,6 +92,11 @@
     <ClInclude Include="BVH.cuh">
       <Filter>Source Files\AABB</Filter>
     </ClInclude>
-    <ClInclude Include="CUDAUtils.cuh" />
+    <ClInclude Include="Stingray.cuh">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CUDAUtils.cuh">
+      <Filter>Source Files\Utils</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
