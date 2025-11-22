@@ -9,8 +9,8 @@
 #include <curand_kernel.h>
 #include <math_constants.h>
 
-constexpr int   SCREEN_WIDTH    = 1500;
-constexpr int   SCREEN_HEIGHT   = 750;
+constexpr int   SCREEN_WIDTH    = 1200;
+constexpr int   SCREEN_HEIGHT   = 600;
 constexpr int   NUM_PIXELS      = SCREEN_WIDTH * SCREEN_HEIGHT;
 constexpr int   NUM_BOUNCES     = 5;
 constexpr float CAM_VFOV_DEG    = 90.0f;
@@ -37,7 +37,7 @@ static void updateProgressBar(float progress, std::chrono::steady_clock::time_po
         else if (i == pos) std::cout << ">";
         else std::cout << " ";
     }
-    std::cout << "] " << int(progress * 100.0) << "% : " << ms_double.count() << "ms" << " \r";
+    std::cout << "] " << int(progress * 100.0) << "% : " << ms_double.count() << "ms, fps:" << (1000.0f / ms_double.count()) << " \r";
     std::cout.flush();
 }
 
