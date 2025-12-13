@@ -19,7 +19,7 @@ struct SceneObject {
     std::vector<Triangle> h_primitives;
     int numPrims;
 
-    void loadModel(std::string filepath);
+    void loadModel(std::string filepath, int matIdx);
 };
 
 struct d_Scene {
@@ -133,15 +133,15 @@ struct Scene {
     std::vector<Triangle> h_triangles;
     std::vector<PBRMaterial> h_mats;
     std::vector<AreaLight> h_lights;
+    std::vector<V3> h_centroids;
+    std::vector<BVHNode> h_bvhNodes;
+    std::vector<uint32_t> h_triIdx;
+    uint32_t rootIdx = 0, nodesUsed = 1;
     Triangle* d_primitives = nullptr;
     PBRMaterial* d_mats = nullptr;
     AreaLight* d_lights = nullptr;
-    std::vector<BVHNode> h_bvhNodes;
     BVHNode* d_bvhNodes = nullptr;
-    std::vector<uint32_t> h_triIdx;
     uint32_t* d_indexBuffer = nullptr;
-    uint32_t rootIdx = 0, nodesUsed = 1;
-    std::vector<V3> h_centroids;
 
     int lightCounter = 0;
 
@@ -152,9 +152,9 @@ struct Scene {
         miscTriangles.h_primitives.push_back(t);
     }
 
-    void addObjectFromFile(std::string filepath) {
+    void addObjectFromFile(std::string filepath, int matIdx) {
         SceneObject obj;
-        obj.loadModel(filepath);
+        obj.loadModel(filepath, matIdx);
         h_objects.push_back(std::move(obj));
     }
 

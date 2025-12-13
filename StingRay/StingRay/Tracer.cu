@@ -4,9 +4,10 @@ using namespace std;
 
 constexpr float PI = 3.14159265f;
 
-__device__ V3 Tracer::calculate_shadow_ray(Ray& shadowRay, d_Scene* scene, AreaLight& a, const hitReg& primHit) {
+__device__ V3 Tracer::calculate_shadow_ray(Ray& shadowRay, d_Scene* scene, d_Scene* scene2, AreaLight& a, const hitReg& primHit) {
 	hitReg temp_rec = intersectBVH(shadowRay, scene, 0);
-	if (!temp_rec.hit) {
+	hitReg otemp_rec = intersectBVH(shadowRay, scene2, 0);
+	if (!temp_rec.hit && !otemp_rec.hit) {
 		return a.color * a.get_intensity(primHit.hitPoint.distance_to(a.pos + (-primHit.normal_vector * a.radius)));
 	} else {
 		return V3(0, 0, 0);
@@ -66,7 +67,7 @@ __device__ V3 cookTorrence(const V3& normal, const V3& view, const V3& light, co
 	return (kd * albedo / PI + spec) * ndotl;
 }
 
-__device__ V3 Tracer::trace_ray(const Ray& ray, d_Scene* scene, int max_bounces, curandState* localDevState) {
+__device__ V3 Tracer::trace_ray(const Ray& ray, d_Scene* scene, d_Scene* scene2, int max_bounces, curandState* localDevState) {
 	Ray cur_r = ray;
 	V3 radiance(0.0f);
 	V3 attenuation(1.0f);
@@ -74,14 +75,15 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, d_Scene* scene, int max_bounces,
 	for (int i = 0; i < max_bounces; i++) {
 		// Check if the primary ray hits anything
 		hitReg hit = intersectBVH(cur_r, scene, 0);
+		hitReg oHit = intersectBVH(cur_r, scene2, 0);
 
-		if (!hit.hit) {
+		if (!hit.hit && !oHit.hit) {
 			// add sky color here if necessary (radiance += attenuation * env_color)
 			break;
 		}
-		//else {
-		//	return scene->d_mats[hit.hitMaterialIdx].base_color;
-		//}
+		if (oHit.time < hit.time) {
+			hit = oHit;
+		}
 
 		Ray secondaryRay;
 		V3 albedo = scene->d_mats[hit.hitMaterialIdx].hitColor(cur_r, hit, secondaryRay, localDevState);
@@ -103,7 +105,7 @@ __device__ V3 Tracer::trace_ray(const Ray& ray, d_Scene* scene, int max_bounces,
 
 			Ray shadowRay = Ray(hit.hitPoint + hit.normal_vector * 1e-4f, shadowSampleDir);
 
-			direct += cookTorrence(hit.normal_vector, -cur_r.direction, lightRay, scene->d_mats[hit.hitMaterialIdx]) * calculate_shadow_ray(shadowRay, scene, l, hit);
+			direct += cookTorrence(hit.normal_vector, -cur_r.direction, lightRay, scene->d_mats[hit.hitMaterialIdx]) * calculate_shadow_ray(shadowRay, scene, scene2, l, hit);
 		}
 
 		radiance += attenuation * direct;

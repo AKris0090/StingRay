@@ -52,6 +52,8 @@ std::vector<Uint32> pixels(NUM_PIXELS);
 curandState* devStates;
 Camera cam;
 Scene h_scene;
+Scene h_scene2;
 
 GPUCam* d_cam = nullptr;
 d_Scene* d_scene;
+d_Scene* d_scene2;

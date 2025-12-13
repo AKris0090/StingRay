@@ -3,7 +3,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
-void SceneObject::loadModel(std::string filepath) {
+void SceneObject::loadModel(std::string filepath, int matIdx) {
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
@@ -56,7 +56,7 @@ void SceneObject::loadModel(std::string filepath) {
             V3 n3 = fetchN(i3);
     
             Triangle t{ v1, v2, v3 };
-            t.matIdx = 2;
+            t.matIdx = matIdx;
             t.normal = ((n1 + n2 + n3) / 3).normalize();
             h_primitives.push_back(t);
     

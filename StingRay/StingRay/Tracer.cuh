@@ -10,6 +10,6 @@ using namespace std;
 class Tracer {
 public:
 	// Should return a color that corresponds to the traced ray
-	__device__ static V3 calculate_shadow_ray(Ray& shadowRay, d_Scene* objects, AreaLight& a, const hitReg& primHit);
-	__device__ static V3 trace_ray(const Ray& ray, d_Scene* scene, int max_bounces, curandState* localDevState);
+	__device__ static V3 calculate_shadow_ray(Ray& shadowRay, d_Scene* objects, d_Scene* scene2, AreaLight& a, const hitReg& primHit);
+	__device__ static V3 trace_ray(const Ray& ray, d_Scene* scene, d_Scene* scene2, int max_bounces, curandState* localDevState);
 };
