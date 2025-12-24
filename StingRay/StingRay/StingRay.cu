@@ -1,6 +1,7 @@
 #include "Stingray.cuh"
 
 void setupObjectsHostToDevice() {
+	Scene h_scene;
     h_scene.addLight(V3(1.0f, 1.5f, 2.0f), 0.15f,  8.5f);
     h_scene.addLight(V3(-1.0f, 1.5f, 2.0f), 0.15f, 8.5f);
     h_scene.addLight(V3(1.0f, 1.5f, -2.0f), 0.15f, 8.5f);
@@ -12,31 +13,14 @@ void setupObjectsHostToDevice() {
     h_scene.addMaterial(V3(186.0f, 85.0f, 211.0f), 0.25f, 1.0f);
 
     h_scene.addObjectFromFile("./objects/dragon.obj", 2);
+
+	Scene h_scene2;
     h_scene2.addObjectFromFile("./objects/box.obj", 0);
 
-    h_scene.offloadObjects();
-    h_scene.buildBVH();
-    d_Scene tempScene = d_Scene{
-        h_scene.d_mats,
-        h_scene.d_lights,
-        h_scene.d_bvhNodes,
-        h_scene.d_indexBuffer,
-        h_scene.d_primitives,
-        h_scene.lightCounter
-    };
-    d_scene = device_alloc_and_upload<d_Scene>(&tempScene);
+	h_sceneCollection.scenes.push_back(h_scene);
+    h_sceneCollection.scenes.push_back(h_scene2);
 
-    h_scene2.offloadObjects();
-    h_scene2.buildBVH();
-    d_Scene tempScene2 = d_Scene{
-        h_scene2.d_mats,
-        h_scene2.d_lights,
-        h_scene2.d_bvhNodes,
-        h_scene2.d_indexBuffer,
-        h_scene2.d_primitives,
-        h_scene2.lightCounter
-    };
-    d_scene2 = device_alloc_and_upload<d_Scene>(&tempScene2);
+	h_sceneCollection.uploadToDevice();
 }
 
 static __global__ void init_rng(curandState* states, unsigned long seed) {
@@ -47,7 +31,7 @@ static __global__ void init_rng(curandState* states, unsigned long seed) {
     curand_init(seed, (unsigned long long) idx, 0, &states[idx]);
 }
 
-static __global__ void updateDisplay(V3* totals, Uint8* devPixels, GPUCam* cam, const int numBounces, d_Scene* scene, d_Scene* scene2, curandState* devStates, int repeatSamples) {
+static __global__ void updateDisplay(V3* totals, Uint8* devPixels, GPUCam* cam, d_Scene* scenes, curandState* devStates, int repeatSamples) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
     if ((i >= SCREEN_WIDTH) || (j >= SCREEN_HEIGHT)) return;
@@ -63,7 +47,7 @@ static __global__ void updateDisplay(V3* totals, Uint8* devPixels, GPUCam* cam, 
 
     V3 dir = (cam->botLeft + u + v - cam->origin).normalize();
     Ray primary_ray(cam->origin, dir);
-    V3 ret_color = Tracer::trace_ray(primary_ray, scene, scene2, numBounces, &localDevState);
+    V3 ret_color = Tracer::trace_ray(primary_ray, scenes, &localDevState);
 
     totals[index].x += clampRGB(ret_color.x);
     totals[index].y += clampRGB(ret_color.y);
@@ -131,7 +115,7 @@ int main(int argc, char** arcgv) {
 
         if (window.repeat_samples < NUM_SAMPLES) {
             window.repeat_samples += 1;
-            updateDisplay << <blocks, threads >> > (totals, devPixels, d_cam, NUM_BOUNCES, d_scene, d_scene2, devStates, window.repeat_samples);
+            updateDisplay << <blocks, threads >> > (totals, devPixels, d_cam, h_sceneCollection.d_Scenes, devStates, window.repeat_samples);
             CUDA_CHECK(cudaDeviceSynchronize());
             CUDA_CHECK(cudaPeekAtLastError());
 

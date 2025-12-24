@@ -8,7 +8,6 @@
 
 // GPU Error Checking MACRO
 #define CUDA_CHECK(expr)  gpuAssert((expr), #expr, __FILE__, __LINE__)
-
 inline void gpuAssert(cudaError_t code, const char* expr, const char* file, int line, bool abort = true)
 {
     if (code != cudaSuccess)
@@ -33,6 +32,7 @@ inline void gpuAssert(cudaError_t code, const char* expr, const char* file, int 
     }
 }
 
+// Upload a vector to consecutive device memory
 template<typename T>
 T* upload_vector(const std::vector<T>& vec) {
     T* devPtr = nullptr;
@@ -42,6 +42,7 @@ T* upload_vector(const std::vector<T>& vec) {
     return devPtr;
 }
 
+// Allocate space for a single object to device memory
 template<typename T>
 T* device_allocate(size_t count) {
     T* devPtr = nullptr;
@@ -49,6 +50,7 @@ T* device_allocate(size_t count) {
     return devPtr;
 }
 
+// Upload an entire object to device memory
 template<typename T>
 T* device_alloc_and_upload(const T* obj) {
     T* devPtr = nullptr;

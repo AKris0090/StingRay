@@ -12,7 +12,6 @@
 constexpr int   SCREEN_WIDTH    = 1200;
 constexpr int   SCREEN_HEIGHT   = 600;
 constexpr int   NUM_PIXELS      = SCREEN_WIDTH * SCREEN_HEIGHT;
-constexpr int   NUM_BOUNCES     = 5;
 constexpr float CAM_VFOV_DEG    = 90.0f;
 constexpr float MOVE_SENS       = 0.05f;
 constexpr float LOOK_SENS       = 0.1f;
@@ -51,9 +50,6 @@ std::vector<Uint32> pixels(NUM_PIXELS);
 
 curandState* devStates;
 Camera cam;
-Scene h_scene;
-Scene h_scene2;
+h_SceneCollection h_sceneCollection;
 
 GPUCam* d_cam = nullptr;
-d_Scene* d_scene;
-d_Scene* d_scene2;
