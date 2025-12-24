@@ -1,5 +1,5 @@
 #include "Display.cuh"
-#include "SDL.h"
+#include "SDL3/SDL.h"
 #include "Camera.cuh"
 #include "Tracer.cuh"
 #include "Scene.cuh"

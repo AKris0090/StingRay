@@ -83,9 +83,9 @@ int main(int argc, char** arcgv) {
 
     while (window.running) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) window.running = false;
+            if (event.type == SDL_EVENT_QUIT) window.running = false;
 
-            if (event.type == SDL_MOUSEMOTION) {
+            if (event.type == SDL_EVENT_MOUSE_MOTION) {
                 float xoffset = event.motion.xrel * LOOK_SENS;
                 float yoffset = event.motion.yrel * LOOK_SENS;
 
@@ -98,7 +98,7 @@ int main(int argc, char** arcgv) {
 
         bool write = false;
 
-        const Uint8* state = SDL_GetKeyboardState(NULL);
+        const bool* state = SDL_GetKeyboardState(NULL);
         if (state[SDL_SCANCODE_W]) { cam.h_cam.origin += forward * MOVE_SENS; write = true; }
         if (state[SDL_SCANCODE_S]) { cam.h_cam.origin -= forward * MOVE_SENS; write = true; }
         if (state[SDL_SCANCODE_A]) { cam.h_cam.origin -= right * MOVE_SENS; write = true; }
@@ -122,12 +122,15 @@ int main(int argc, char** arcgv) {
             cudaMemcpy(copyTotals, devPixels, (SCREEN_WIDTH * SCREEN_HEIGHT) * sizeof(Uint8) * 3, cudaMemcpyDeviceToHost);
 
             for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-                pixels[i] = SDL_MapRGB(window.surface->format, copyTotals[(i * 3)], copyTotals[(i * 3) + 1], copyTotals[(i * 3) + 2]);
+                Uint32 r = copyTotals[i*3 + 0];
+                Uint32 g = copyTotals[i*3 + 1];
+                Uint32 b = copyTotals[i*3 + 2];
+                pixels[i] = (0xFF << 24) | (r << 16) | (g << 8) | b;
             }
 
             SDL_UpdateTexture(window.texture, NULL, pixels.data(), SCREEN_WIDTH * sizeof(Uint32));
             SDL_RenderClear(window.renderer);
-            SDL_RenderCopyEx(window.renderer, window.texture, NULL, NULL, 0, NULL, SDL_FLIP_VERTICAL);
+            SDL_RenderTextureRotated(window.renderer, window.texture, NULL, NULL, 0, NULL, SDL_FLIP_VERTICAL);
             SDL_RenderPresent(window.renderer);
 
             auto t2 = high_resolution_clock::now();

@@ -7,7 +7,7 @@ struct GPUCam {
 };
 
 inline float radians(float deg) {
-    return deg * (3.141593 / 180.0f);
+    return deg * (3.141593f / 180.0f);
 }
 
 struct Camera {

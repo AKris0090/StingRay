@@ -15,18 +15,22 @@ void DisplayWindow::initDisplay(int screen_width, int screen_height) {
     // Startup the video feed
     SDL_Init(SDL_INIT_VIDEO);
 
-    // Create the SDL Window and open
-    window = SDL_CreateWindow("StingRay", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, (screen_width), (screen_height), 0);
+    window = SDL_CreateWindow(
+        "StingRay",        // title
+        screen_width,       // width in pixels
+        screen_height,      // height in pixels
+        0                   // flags (0 = default)
+    );
         
     // Create the renderer for the window
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    renderer = SDL_CreateRenderer(window, NULL);
 
     // Get surface off of the window
     surface = SDL_GetWindowSurface(window);
 
     float deltaTime = (SDL_GetTicks() - lastFrameTime) / 1000.0f;
     lastFrameTime = SDL_GetTicks();
-    SDL_SetRelativeMouseMode(SDL_TRUE);
+    SDL_SetWindowRelativeMouseMode(window, true);
 
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, screen_width, screen_height);
 }

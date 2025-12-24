@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <chrono>
 #include "cuda.h"
 #include "cuda_runtime.h"
