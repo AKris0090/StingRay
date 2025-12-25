@@ -15,7 +15,7 @@ void setupObjectsHostToDevice() {
     h_scene.addObjectFromFile("./objects/dragon.obj", 2);
 
 	Scene h_scene2;
-    h_scene2.addObjectFromFile("./objects/box.obj", 0);
+    h_scene2.addObjectFromFile("./objects/box.obj", 1);
 
 	h_sceneCollection.scenes.push_back(h_scene);
     h_sceneCollection.scenes.push_back(h_scene2);
