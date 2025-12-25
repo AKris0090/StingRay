@@ -24,6 +24,7 @@
     <ProjectGuid>{f5bcb2da-9317-4f70-a35f-4e4082dcdfc7}</ProjectGuid>
     <RootNamespace>StingRay</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <CudaToolkitCustomDir>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.1</CudaToolkitCustomDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -54,6 +55,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(ProgramFiles) (x86)\MSBuild\Microsoft.Cpp\v4.0\BuildCustomizations\CUDA 13.1.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -71,8 +73,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\SDL\SDL2\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\SDL\SDL2\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\VulkanSDK\1.4.335.0\Include\SDL2</IncludePath>
+    <LibraryPath>C:\VulkanSDK\1.4.335.0\Lib;C:\Program Files %28x86%29\Windows Kits\10\Lib\10.0.26100.0\ucrt\x64;C:\Program Files %28x86%29\Windows Kits\10\Lib\10.0.26100.0\um\x64</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>C:\VulkanSDK\1.4.335.0\Include\SDL2;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\VulkanSDK\1.4.335.0\Lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -108,12 +114,23 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;cudart_static.lib;cudart.lib;cudadevrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
+    </ProjectReference>
+    <CudaCompile>
+      <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
+      <AdditionalOptions>-g -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <CodeGeneration>compute_86,sm_86</CodeGeneration>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -123,28 +140,67 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;cudart_static.lib;cudart.lib;cudadevrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(CUDA_PATH)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
+    </ProjectReference>
+    <CudaCompile>
+      <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
+      <AdditionalOptions>-g -allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+      <Include>
+      </Include>
+      <CodeGeneration>compute_86,sm_86</CodeGeneration>
+      <FastMath>true</FastMath>
+    </CudaCompile>
+    <CudaLink>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </CudaLink>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Display.cpp" />
-    <ClCompile Include="Ray.cpp" />
-    <ClCompile Include="StingRay.cpp" />
-    <ClCompile Include="Tracer.cpp" />
-    <ClCompile Include="Vertex.cpp" />
+    <CudaCompile Include="Display.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="PBRMat.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
+    <CudaCompile Include="Scene.cu" />
+    <CudaCompile Include="StingRay.cu">
+      <FileType>Document</FileType>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">-std=c++17 -Xcompiler "/std:c++17" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">-std=c++17 -Xcompiler "/std:c++17" %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
+    <CudaCompile Include="Tracer.cu">
+      <FileType>Document</FileType>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Display.h" />
-    <ClInclude Include="Ray.h" />
-    <ClInclude Include="Tracer.h" />
-    <ClInclude Include="Vertex.h" />
+    <CudaCompile Include="AreaLight.cuh" />
+    <CudaCompile Include="Display.cuh" />
+    <CudaCompile Include="PBRMat.cuh" />
+    <CudaCompile Include="Ray.cuh" />
+    <CudaCompile Include="Tracer.cuh" />
+    <CudaCompile Include="Vector.cuh" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BVH.cuh" />
+    <ClInclude Include="Camera.cuh" />
+    <ClInclude Include="CUDAUtils.cuh" />
+    <ClInclude Include="Scene.cuh" />
+    <ClInclude Include="Stingray.cuh" />
+    <ClInclude Include="tiny_obj_loader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(ProgramFiles) (x86)\MSBuild\Microsoft.Cpp\v4.0\BuildCustomizations\CUDA 13.1.targets" />
   </ImportGroup>
 </Project>

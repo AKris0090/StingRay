@@ -25,36 +25,78 @@
     <Filter Include="Source Files\Ray">
       <UniqueIdentifier>{9c30f961-acc4-4f4c-8f2c-83056eff7453}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\PBRMat">
+      <UniqueIdentifier>{ef7cc603-4b1c-4026-8fbb-1f1d526f6d57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Lights">
+      <UniqueIdentifier>{734157fc-1633-41b5-b497-b57e2b47f887}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Camera">
+      <UniqueIdentifier>{540b2542-8e42-4b0f-9839-acbceb529805}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\SceneObject">
+      <UniqueIdentifier>{aade4108-efad-4c84-9a07-4014f21cd4df}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\AABB">
+      <UniqueIdentifier>{d42880f3-6a2c-4639-899d-835acad58e9c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Utils">
+      <UniqueIdentifier>{c4a2c8e7-2d8a-4eb6-8f48-af3b78b9d788}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="StingRay.cpp">
+    <CudaCompile Include="StingRay.cu">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Display.cpp">
+    </CudaCompile>
+    <CudaCompile Include="Display.cuh">
       <Filter>Source Files\Display</Filter>
-    </ClCompile>
-    <ClCompile Include="Vertex.cpp">
-      <Filter>Source Files\Vector</Filter>
-    </ClCompile>
-    <ClCompile Include="Tracer.cpp">
-      <Filter>Source Files\Tracer</Filter>
-    </ClCompile>
-    <ClCompile Include="Ray.cpp">
+    </CudaCompile>
+    <CudaCompile Include="Display.cu">
+      <Filter>Source Files\Display</Filter>
+    </CudaCompile>
+    <CudaCompile Include="AreaLight.cuh">
+      <Filter>Source Files\Lights</Filter>
+    </CudaCompile>
+    <CudaCompile Include="PBRMat.cu">
+      <Filter>Source Files\PBRMat</Filter>
+    </CudaCompile>
+    <CudaCompile Include="PBRMat.cuh">
+      <Filter>Source Files\PBRMat</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Ray.cuh">
       <Filter>Source Files\Ray</Filter>
-    </ClCompile>
+    </CudaCompile>
+    <CudaCompile Include="Tracer.cu">
+      <Filter>Source Files\Tracer</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Tracer.cuh">
+      <Filter>Source Files\Tracer</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Vector.cuh">
+      <Filter>Source Files\Vector</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Scene.cu">
+      <Filter>Source Files\SceneObject</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Display.h">
-      <Filter>Source Files\Display</Filter>
+    <ClInclude Include="Camera.cuh">
+      <Filter>Source Files\Camera</Filter>
     </ClInclude>
-    <ClInclude Include="Vertex.h">
-      <Filter>Source Files\Vector</Filter>
+    <ClInclude Include="tiny_obj_loader.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Tracer.h">
-      <Filter>Source Files\Tracer</Filter>
+    <ClInclude Include="Scene.cuh">
+      <Filter>Source Files\SceneObject</Filter>
     </ClInclude>
-    <ClInclude Include="Ray.h">
-      <Filter>Source Files\Ray</Filter>
+    <ClInclude Include="BVH.cuh">
+      <Filter>Source Files\AABB</Filter>
+    </ClInclude>
+    <ClInclude Include="Stingray.cuh">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CUDAUtils.cuh">
+      <Filter>Source Files\Utils</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
