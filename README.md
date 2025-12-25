@@ -4,6 +4,8 @@
 
 Stingray is a iterative raytracer made in C++ and optimized using the CUDA API.
 
+Sample above runs in real time (75-80 fps, 1200x600, 5 bounces/pixel). Uses the original Stanford dragon model, 871,000+ primitives.
+
 ## 🛠 How to Build
 1. Clone the repo: `git clone https://github.com/AKris0090/StingRay.git`
 2. Build and run in Visual Studio. Release mode preferred, debug is slow.
