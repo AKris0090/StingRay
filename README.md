@@ -32,7 +32,11 @@ Parallelizing the raytracing work onto the GPU increased frame times from 350 ms
 
 ![roseGOld](https://github.com/user-attachments/assets/c9d37816-166b-417c-bc29-cf4f6b402a7e)
 
-The material system I implemented allows for variable color and roughness. In the future, I plan to incorporate more PBR elements such as metallicity, specular, and transmission materials.
+The material system I implemented allows for variable color, roughness, and metallicity. It uses a Cook-Torrance BRDF (bi-directional reflectance function) to imitate the interaction of light with the objects in the scene. In the future, I plan to incorporate more PBR elements, including transmission materials.
+
+### Optimizations
+Implemented a bounding volume heirarchy (BVH) to speed up tracing, achieving a fully real-time path tracing application. Able to confidently handle hundred of thousands of primitives, even on laptop GPUs. Dropped frame time from 31 ms/frame to 12 ms/frame.
 
 ## Credits:
 * https://raytracing.github.io/
+* https://jacco.ompf2.com/2022/04/13/how-to-build-a-bvh-part-1-basics/
